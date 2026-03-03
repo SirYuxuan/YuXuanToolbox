@@ -360,6 +360,7 @@ function Core:InitializeQuickCoordInput()
     input:SetMaxLetters(32)
     input:SetTextInsets(6, 6, 0, 0)
     input:SetFontObject(GameFontHighlightSmall)
+    input.cursorOffset = 0
 
     input.hint = input:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     input.hint:SetPoint("LEFT", input, "LEFT", 8, 0)
@@ -371,6 +372,12 @@ function Core:InitializeQuickCoordInput()
 
     input:SetScript("OnEscapePressed", function(self)
         self:ClearFocus()
+    end)
+
+    input:SetScript("OnEditFocusGained", function(self)
+        if self.cursorOffset == nil then
+            self.cursorOffset = 0
+        end
     end)
 
     input:SetScript("OnEnterPressed", function(self)

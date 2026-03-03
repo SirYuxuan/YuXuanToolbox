@@ -64,6 +64,7 @@ local function showQuickAddPopup()
         titleEdit:SetAutoFocus(false)
         titleEdit:SetSize(320, 24)
         titleEdit:SetPoint("TOPLEFT", titleLabel, "BOTTOMLEFT", 0, -6)
+        titleEdit.cursorOffset = 0
         quickAddFrame.titleEdit = titleEdit
 
         local noteLabel = quickAddFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
@@ -74,6 +75,7 @@ local function showQuickAddPopup()
         noteEdit:SetAutoFocus(false)
         noteEdit:SetSize(320, 24)
         noteEdit:SetPoint("TOPLEFT", noteLabel, "BOTTOMLEFT", 0, -6)
+        noteEdit.cursorOffset = 0
         quickAddFrame.noteEdit = noteEdit
 
         local colorLabel = quickAddFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
@@ -283,6 +285,7 @@ local function createImportExportPanel()
     ioEdit:SetMultiLine(true)
     ioEdit:SetFontObject(GameFontHighlightSmall)
     ioEdit:SetWidth(600)
+    ioEdit.cursorOffset = 0
 
     exportBtn:SetScript("OnClick", function()
         ioEdit:SetText(Core:ExportMarkers())
@@ -367,6 +370,7 @@ local function createSettingsPanel()
     titleEdit:SetAutoFocus(false)
     titleEdit:SetSize(220, 24)
     titleEdit:SetPoint("TOPLEFT", titleInputLabel, "BOTTOMLEFT", 0, -6)
+    titleEdit.cursorOffset = 0
 
     local noteInputLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     noteInputLabel:SetPoint("TOPLEFT", titleEdit, "BOTTOMLEFT", 0, -8)
@@ -376,6 +380,7 @@ local function createSettingsPanel()
     noteEdit:SetAutoFocus(false)
     noteEdit:SetSize(220, 24)
     noteEdit:SetPoint("TOPLEFT", noteInputLabel, "BOTTOMLEFT", 0, -6)
+    noteEdit.cursorOffset = 0
 
     local quickColor = Core:GetLastColor()
 
