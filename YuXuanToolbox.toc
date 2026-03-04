@@ -12,12 +12,14 @@ Utils.lua
 Core.lua
 Modules\QuickChat.lua
 Modules\AttributeDisplay.lua
+Modules\CurrencyDisplay.lua
 Modules\CastBar.lua
 Modules\MapGuideData.lua
 Modules\MapGuide.lua
 Options\Shared.lua
 Options\QuickChat.lua
 Options\Attribute.lua
+Options\Currency.lua
 Options\CastBar.lua
 Options\MapGuide.lua
 Options\Main.lua

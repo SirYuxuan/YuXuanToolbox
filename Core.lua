@@ -50,6 +50,10 @@ local Core = {
     attributeLines = {},
     attributeProgressBars = {},
 
+    -- Currency display state
+    currencyFrame = nil,
+    currencyItems = {},
+
     -- CastBar state
     castBars = {},
     castBarEventFrame = nil,
@@ -130,6 +134,21 @@ Core.DEFAULTS = {
             progressBarTexture = "Blizzard",
             progressBarColor   = { r = 1, g = 1, b = 1 },
             maxIlvl            = 289,
+        },
+        currency = {
+            enabled = false,
+            locked = false,
+            orientation = "HORIZONTAL",
+            spacing = 8,
+            iconSize = 16,
+            fontSize = 14,
+            fontOutline = false,
+            font = "Friz Quadrata TT",
+            displayMode = "ICON_TEXT", -- ICON / TEXT / ICON_TEXT
+            showMoney = true,
+            selected = {},
+            order = {},
+            pos = { point = "CENTER", relativeTo = "UIParent", relativePoint = "CENTER", x = 0, y = -220 },
         },
         mapGuide = {
             enableMapMarkers = false,
@@ -364,6 +383,9 @@ function Core:ApplyAllSettings()
     if self.ApplyAttributeSettings then
         self:ApplyAttributeSettings()
     end
+    if self.ApplyCurrencySettings then
+        self:ApplyCurrencySettings()
+    end
     if self.ApplyCastBarSettings then
         self:ApplyCastBarSettings()
     end
@@ -409,6 +431,7 @@ function Core:Initialize()
     self:EnsureQuickChatData()
     self:CreateQuickChatBar()
     self:CreateAttributeFrame()
+    self:CreateCurrencyFrame()
     self:CreateCastBars()
     self:InitializeMapGuide()
     self:SetupMinimapButton()

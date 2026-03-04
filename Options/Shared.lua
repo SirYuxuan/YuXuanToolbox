@@ -8,6 +8,8 @@ function S.QC() return Core.db.profile.quickChat end
 
 function S.AT() return Core.db.profile.attribute end
 
+function S.CUcfg() return Core.db.profile.currency end
+
 function S.CBcfg() return Core.db.profile.castBar end
 
 function S.MGcfg() return Core.db.profile.mapGuide end

@@ -64,6 +64,12 @@ local function BuildAboutOptions()
                 order = 14,
                 fontSize = "medium",
             },
+            feature5 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF货币展示|r - 按游戏分组选择货币、自定义排列方向与展示样式",
+                order = 15,
+                fontSize = "medium",
+            },
             spacer3 = { type = "description", name = " ", order = 20, width = "full" },
             headerCommands = {
                 type = "header",
@@ -133,6 +139,7 @@ local function GetOptions()
         args = {
             quickChat = ns.BuildQuickChatOptions(),
             attribute = ns.BuildAttributeOptions(),
+            currency = ns.BuildCurrencyOptions(),
             castBar = ns.BuildCastBarOptions(),
             mapGuide = ns.BuildMapGuideOptions(),
             profiles = {
