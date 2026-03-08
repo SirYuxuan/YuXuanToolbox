@@ -242,11 +242,8 @@ end
 -- ═══════════════════════════════════════════════════
 
 function Core:HideMiscPopupMenu()
-    if self.miscPopupMenu then
-        self.miscPopupMenu:Hide()
-    end
-    if self.miscPopupDismissFrame then
-        self.miscPopupDismissFrame:Hide()
+    if CloseDropDownMenus then
+        CloseDropDownMenus()
     end
     self.miscPopupMenuType = nil
     self.miscPopupAnchor = nil
@@ -256,83 +253,15 @@ function Core:GetOrCreateMiscPopupMenu()
     if self.miscPopupMenu then
         return self.miscPopupMenu
     end
-
-    local menu = CreateFrame("Frame", addonName .. "MiscPopupMenu", UIParent, "BackdropTemplate")
-    menu:SetFrameStrata("DIALOG")
-    menu:SetToplevel(true)
-    menu:SetClampedToScreen(true)
-    menu:EnableMouse(true)
-    menu:SetBackdrop({
-        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true,
-        tileSize = 16,
-        edgeSize = 14,
-        insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    menu:SetBackdropColor(0.05, 0.05, 0.05, 0.96)
-    menu:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
-
-    menu.title = menu:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    menu.title:SetPoint("TOPLEFT", menu, "TOPLEFT", MENU_PADDING, -MENU_PADDING)
-    menu.title:SetJustifyH("LEFT")
-
-    menu.buttons = {}
-    menu:Hide()
-
-    local dismiss = CreateFrame("Button", nil, UIParent)
-    dismiss:SetFrameStrata("DIALOG")
-    dismiss:SetFrameLevel(menu:GetFrameLevel() - 1)
-    dismiss:SetAllPoints(UIParent)
-    dismiss:EnableMouse(true)
-    dismiss:RegisterForClicks("AnyUp")
-    dismiss:SetScript("OnClick", function()
-        Core:HideMiscPopupMenu()
-    end)
-    dismiss:Hide()
-
-    table.insert(UISpecialFrames, addonName .. "MiscPopupMenu")
+    local menu = CreateFrame("Frame", addonName .. "MiscPopupMenu", UIParent, "UIDropDownMenuTemplate")
+    UIDropDownMenu_Initialize(menu, function() end, "MENU")
     self.miscPopupMenu = menu
-    self.miscPopupDismissFrame = dismiss
     return menu
-end
-
-function Core:GetOrCreateMiscPopupButton(menu, index)
-    if menu.buttons[index] then
-        return menu.buttons[index]
-    end
-
-    local button = CreateFrame("Button", nil, menu)
-    button:SetHeight(MENU_ITEM_HEIGHT)
-    button:RegisterForClicks("AnyUp")
-    button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-
-    button.activeBg = button:CreateTexture(nil, "BACKGROUND")
-    button.activeBg:SetAllPoints()
-    button.activeBg:SetColorTexture(1, 0.82, 0, 0.08)
-    button.activeBg:Hide()
-
-    button.check = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    button.check:SetPoint("LEFT", button, "LEFT", 8, 0)
-    button.check:SetWidth(16)
-    button.check:SetJustifyH("CENTER")
-
-    button.icon = button:CreateTexture(nil, "ARTWORK")
-    button.icon:SetSize(16, 16)
-    button.icon:SetPoint("LEFT", button.check, "RIGHT", 4, 0)
-
-    button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    button.text:SetPoint("LEFT", button.icon, "RIGHT", 6, 0)
-    button.text:SetJustifyH("LEFT")
-    button:SetFrameLevel(menu:GetFrameLevel() + 1)
-
-    menu.buttons[index] = button
-    return button
 end
 
 function Core:ShowMiscPopupMenu(anchor, menuType, title, entries, onSelect)
     local menu = self:GetOrCreateMiscPopupMenu()
-    if menu:IsShown() and self.miscPopupMenuType == menuType and self.miscPopupAnchor == anchor then
+    if UIDROPDOWNMENU_OPEN_MENU == menu and self.miscPopupMenuType == menuType and self.miscPopupAnchor == anchor then
         self:HideMiscPopupMenu()
         return
     end
@@ -340,67 +269,40 @@ function Core:ShowMiscPopupMenu(anchor, menuType, title, entries, onSelect)
     self.miscPopupMenuType = menuType
     self.miscPopupAnchor = anchor
 
-    menu.title:SetText(title)
-    menu:ClearAllPoints()
-    menu:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 6)
-    if self.miscPopupDismissFrame then
-        self.miscPopupDismissFrame:Show()
-        self.miscPopupDismissFrame:SetFrameLevel(menu:GetFrameLevel() - 1)
-    end
+    local menuList = {
+        {
+            text = title,
+            isTitle = true,
+            notCheckable = true,
+        },
+    }
 
-    local width = MENU_WIDTH
-    local previous
-    for index, entry in ipairs(entries) do
-        local button = self:GetOrCreateMiscPopupButton(menu, index)
-        button:ClearAllPoints()
-        if previous then
-            button:SetPoint("TOPLEFT", previous, "BOTTOMLEFT", 0, 0)
-        else
-            button:SetPoint("TOPLEFT", menu, "TOPLEFT", MENU_PADDING, -(MENU_PADDING + MENU_TITLE_HEIGHT))
-        end
-        button:SetPoint("RIGHT", menu, "RIGHT", -MENU_PADDING, 0)
-        button.text:SetWidth(width - 70)
-        button.icon:SetTexture(entry.icon or nil)
-        button.icon:SetShown(not not entry.icon)
-        button.text:SetText(entry.name or "")
-        if entry.active then
-            button.check:SetText("|cFFFFD100>|r")
-            button.text:SetTextColor(1, 0.82, 0, 1)
-            if button.activeBg then button.activeBg:Show() end
-        else
-            button.check:SetText("")
-            button.text:SetTextColor(1, 1, 1, 1)
-            if button.activeBg then button.activeBg:Hide() end
-        end
-        button:SetScript("OnClick", function(_, mouseButton)
-            if mouseButton ~= "LeftButton" and mouseButton ~= "RightButton" then return end
-            if menuType == "talent" then
-                if not entry.active and onSelect then
+    for _, entry in ipairs(entries) do
+        table.insert(menuList, {
+            text = entry.name or "",
+            icon = entry.icon,
+            checked = entry.active or false,
+            disabled = not not entry.disabled,
+            keepShownOnClick = false,
+            func = function()
+                if entry.active or not onSelect then
+                    Core:HideMiscPopupMenu()
+                    return
+                end
+
+                if menuType == "talent" then
                     Defer(function()
                         onSelect(entry)
                     end)
-                end
-                Defer(function()
-                    Core:HideMiscPopupMenu()
-                end)
-            else
-                if not entry.active and onSelect then
+                else
                     onSelect(entry)
                 end
                 Core:HideMiscPopupMenu()
-            end
-        end)
-        button:Show()
-        previous = button
+            end,
+        })
     end
 
-    for index = #entries + 1, #menu.buttons do
-        menu.buttons[index]:Hide()
-    end
-
-    local height = MENU_PADDING * 2 + MENU_TITLE_HEIGHT + (#entries * MENU_ITEM_HEIGHT)
-    menu:SetSize(width, height)
-    menu:Show()
+    EasyMenu(menuList, menu, anchor, 0, 0, "MENU")
 end
 
 function Core:GetSpecializationEntries()
