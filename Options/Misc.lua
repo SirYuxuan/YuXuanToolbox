@@ -115,12 +115,15 @@ function ns.BuildMiscOptions()
                         type = "range",
                         name = "专精/耐久间隔",
                         order = 5,
-                        min = 0,
-                        max = 60,
+                        min = 1,
+                        max = 300,
                         step = 1,
-                        get = function() return MI().barSpacing or 18 end,
+                        get = function()
+                            local value = MI().barSpacing or 18
+                            return math.max(1, math.min(300, value))
+                        end,
                         set = function(_, val)
-                            MI().barSpacing = val
+                            MI().barSpacing = math.max(1, math.min(300, val))
                             Core:UpdateMiscBarLayout()
                         end,
                     },

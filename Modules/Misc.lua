@@ -280,8 +280,13 @@ function Core:ShowMiscPopupMenu(anchor, menuType, title, entries, onSelect)
 
         for _, entry in ipairs(entries) do
             local info = UIDropDownMenu_CreateInfo()
-            info.text = entry.name or ""
-            info.icon = entry.icon
+            local itemText = entry.name or ""
+            if entry.icon then
+                itemText = string.format("|T%s:14:14:0:0|t　%s", entry.icon, itemText)
+            else
+                itemText = "　　  " .. itemText
+            end
+            info.text = itemText
             info.checked = entry.active or false
             info.disabled = not not entry.disabled
             info.keepShownOnClick = false
@@ -354,10 +359,9 @@ function Core:GetTalentLoadouts()
     local specID = GetSpecializationInfo(specIndex)
     if not specID then return entries end
 
-    local activeConfigID
-    if IsFunctionAvailable(C_ClassTalents, "GetLastSelectedSavedConfigID") then
-        activeConfigID = C_ClassTalents.GetLastSelectedSavedConfigID(specID)
-    end
+    local state = self:GetTalentLoadoutState()
+    local activeConfigID = state.activeConfigID or state.displayConfigID
+    local selectedConfigID = state.selectedConfigID
 
     local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specID) or {}
     for _, configID in ipairs(configIDs) do
@@ -367,6 +371,10 @@ function Core:GetTalentLoadouts()
             if info and info.name and info.name ~= "" then
                 name = info.name
             end
+        end
+
+        if selectedConfigID and activeConfigID and selectedConfigID ~= activeConfigID and configID == selectedConfigID then
+            name = name .. " |cFFFFCC00(目标)|r"
         end
 
         table.insert(entries, {
@@ -386,7 +394,83 @@ function Core:GetTalentLoadouts()
     return entries
 end
 
+function Core:GetTalentLoadoutState()
+    local specIndex = GetSpecialization and GetSpecialization()
+    if not specIndex then
+        return {
+            activeConfigID = nil,
+            selectedConfigID = nil,
+            displayConfigID = nil,
+        }
+    end
+
+    local specID = GetSpecializationInfo(specIndex)
+    local activeConfigID = nil
+    local selectedConfigID = nil
+    local savedConfigIDs = {}
+
+    if specID and IsFunctionAvailable(C_ClassTalents, "GetConfigIDsBySpecID") then
+        local configIDs = C_ClassTalents.GetConfigIDsBySpecID(specID) or {}
+        for _, configID in ipairs(configIDs) do
+            savedConfigIDs[configID] = true
+        end
+    end
+
+    if IsFunctionAvailable(C_ClassTalents, "GetActiveConfigID") then
+        activeConfigID = C_ClassTalents.GetActiveConfigID()
+    end
+
+    if specID and IsFunctionAvailable(C_ClassTalents, "GetLastSelectedSavedConfigID") then
+        selectedConfigID = C_ClassTalents.GetLastSelectedSavedConfigID(specID)
+    end
+
+    local displayConfigID = nil
+    if activeConfigID and savedConfigIDs[activeConfigID] then
+        displayConfigID = activeConfigID
+    elseif selectedConfigID and savedConfigIDs[selectedConfigID] then
+        displayConfigID = selectedConfigID
+    else
+        displayConfigID = activeConfigID or selectedConfigID
+    end
+
+    return {
+        activeConfigID = activeConfigID,
+        selectedConfigID = selectedConfigID,
+        displayConfigID = displayConfigID,
+    }
+end
+
 function Core:GetCurrentTalentLoadoutName()
+    local state = self:GetTalentLoadoutState()
+    local function GetConfigName(configID)
+        if not configID or not C_Traits or not C_Traits.GetConfigInfo then return nil end
+        local info = C_Traits.GetConfigInfo(configID)
+        if info and info.name and info.name ~= "" then
+            return info.name
+        end
+        return nil
+    end
+
+    local activeName = GetConfigName(state.activeConfigID)
+    local selectedName = GetConfigName(state.selectedConfigID)
+    local displayName = GetConfigName(state.displayConfigID)
+
+    if activeName and selectedName and state.activeConfigID and state.selectedConfigID and state.activeConfigID ~= state.selectedConfigID then
+        return string.format("%s → %s", activeName, selectedName)
+    end
+
+    if displayName then
+        return displayName
+    end
+
+    if activeName then
+        return activeName
+    end
+
+    if selectedName then
+        return selectedName
+    end
+
     local loadouts = self:GetTalentLoadouts()
     for _, entry in ipairs(loadouts) do
         if entry.active then
@@ -409,13 +493,13 @@ function Core:EnsureTalentUILoaded()
     return not not PlayerSpellsFrame
 end
 
+function Core:GetSelectedTalentLoadoutID()
+    return self:GetTalentLoadoutState().selectedConfigID
+end
+
 function Core:GetActiveTalentConfigID()
-    if not IsFunctionAvailable(C_ClassTalents, "GetLastSelectedSavedConfigID") then return nil end
-    local specIndex = GetSpecialization and GetSpecialization()
-    if not specIndex then return nil end
-    local specID = GetSpecializationInfo(specIndex)
-    if not specID then return nil end
-    return C_ClassTalents.GetLastSelectedSavedConfigID(specID)
+    local state = self:GetTalentLoadoutState()
+    return state.activeConfigID or state.displayConfigID
 end
 
 function Core:ApplyTalentLoadout(configID)
@@ -466,16 +550,6 @@ function Core:SwitchTalentLoadout(configID)
             Core:ApplyTalentLoadout(configID)
         end
     end)
-
-    if IsFunctionAvailable(C_ClassTalents, "UpdateLastSelectedSavedConfigID") then
-        local specIndex = GetSpecialization and GetSpecialization()
-        if specIndex then
-            local specID = GetSpecializationInfo(specIndex)
-            if specID then
-                C_ClassTalents.UpdateLastSelectedSavedConfigID(specID, configID)
-            end
-        end
-    end
 end
 
 function Core:ShowSpecMenu(anchor)
@@ -575,7 +649,7 @@ function Core:UpdateMiscBarLayout()
     if not self.miscFrame then return end
     local cfg = MIcfg()
     local frame = self.miscFrame
-    local barSpacing = tonumber(cfg.barSpacing) or INFOBAR_SPACING
+    local barSpacing = math.max(1, math.min(300, tonumber(cfg.barSpacing) or INFOBAR_SPACING))
     local fontPath = LibSharedMedia:Fetch("font", cfg.font) or STANDARD_TEXT_FONT
     local fontSize = cfg.fontSize
 
