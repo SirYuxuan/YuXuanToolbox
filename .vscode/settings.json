@@ -54,7 +54,16 @@
         "SlashCmdList",
         "WorldMapFrame",
         "UiMapPoint",
-        "ChatFrame_OpenChat"
+        "ChatFrame_OpenChat",
+        "UIDropDownMenu_Initialize",
+        "ToggleDropDownMenu",
+        "ToggleCharacter",
+        "CloseDropDownMenus",
+        "PlayerSpellsFrame",
+        "PlayerSpellsFrame_LoadUI",
+        "LE_PARTY_CATEGORY_INSTANCE",
+        "UIDropDownMenu_AddButton",
+        "UIDropDownMenu_CreateInfo"
     ],
   
 }
