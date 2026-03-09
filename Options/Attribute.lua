@@ -10,12 +10,12 @@ function ns.BuildAttributeOptions()
         type = "group",
         name = "属性显示",
         order = 20,
+        childGroups = "tab",
         args = {
             basic = {
                 type = "group",
                 name = "基本",
                 order = 10,
-                inline = true,
                 args = {
                     enabled = {
                         type = "toggle",
@@ -52,6 +52,123 @@ function ns.BuildAttributeOptions()
                         get = function() return not Core.db.profile.minimap.hide end,
                         set = function(_, val)
                             Core.db.profile.minimap.hide = not val; Core:UpdateMinimapIcon()
+                        end,
+                    },
+                    fontSize = {
+                        type = "range",
+                        name = "字体尺寸",
+                        order = 10,
+                        min = 6,
+                        max = 30,
+                        step = 1,
+                        get = function() return AT().fontSize end,
+                        set = function(_, val)
+                            AT().fontSize = val; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    lineSpacing = {
+                        type = "range",
+                        name = "行距",
+                        order = 11,
+                        min = 0,
+                        max = 20,
+                        step = 1,
+                        get = function() return AT().lineSpacing end,
+                        set = function(_, val)
+                            AT().lineSpacing = val; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    decimalPlaces = {
+                        type = "range",
+                        name = "小数位数",
+                        order = 12,
+                        min = 0,
+                        max = 2,
+                        step = 1,
+                        get = function() return AT().decimalPlaces end,
+                        set = function(_, val)
+                            AT().decimalPlaces = val; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    bgStyle = {
+                        type = "select",
+                        name = "背景样式",
+                        order = 13,
+                        values = { none = "无背景", semi = "半透明背景" },
+                        get = function() return AT().bgStyle end,
+                        set = function(_, val)
+                            AT().bgStyle = val; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    bgAlpha = {
+                        type = "range",
+                        name = "背景不透明度",
+                        order = 14,
+                        desc = "仅当背景样式为\"半透明背景\"时有效",
+                        min = 0,
+                        max = 1,
+                        step = 0.05,
+                        get = function() return AT().bgAlpha end,
+                        set = function(_, val)
+                            AT().bgAlpha = val; Core:UpdateAttributeDisplay()
+                        end,
+                        disabled = function() return AT().bgStyle == "none" end,
+                    },
+                    progressBarHeader = { type = "header", name = "进度条", order = 15 },
+                    progressBarEnable = {
+                        type = "toggle",
+                        name = "启用进度条",
+                        order = 16,
+                        get = function() return AT().progressBarEnable end,
+                        set = function(_, val)
+                            AT().progressBarEnable = val; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    progressBarTexture = {
+                        type = "select",
+                        name = "进度条材质",
+                        order = 17,
+                        dialogControl = "LSM30_Statusbar",
+                        values = LibSharedMedia:HashTable("statusbar"),
+                        get = function() return AT().progressBarTexture end,
+                        set = function(_, val)
+                            AT().progressBarTexture = val; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    progressBarColor = {
+                        type = "color",
+                        name = "进度条颜色",
+                        order = 18,
+                        hasAlpha = false,
+                        get = function()
+                            return AT().progressBarColor.r, AT().progressBarColor.g, AT().progressBarColor.b
+                        end,
+                        set = function(_, r, g, b)
+                            AT().progressBarColor = { r = r, g = g, b = b }; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    progressBarWidth = {
+                        type = "range",
+                        name = "进度条宽度",
+                        order = 19,
+                        min = 50,
+                        max = 300,
+                        step = 1,
+                        get = function() return AT().progressBarWidth end,
+                        set = function(_, val)
+                            AT().progressBarWidth = val; Core:UpdateAttributeDisplay()
+                        end,
+                    },
+                    progressBarHeight = {
+                        type = "range",
+                        name = "进度条高度",
+                        order = 20,
+                        min = 2,
+                        max = 20,
+                        step = 1,
+                        get = function() return AT().progressBarHeight end,
+                        set = function(_, val)
+                            AT().progressBarHeight = val; Core:UpdateAttributeDisplay()
                         end,
                     },
                 },
@@ -283,133 +400,10 @@ function ns.BuildAttributeOptions()
                     },
                 },
             },
-            size = {
-                type = "group",
-                name = "尺寸与背景",
-                order = 30,
-                args = {
-                    fontSize = {
-                        type = "range",
-                        name = "字体尺寸",
-                        order = 1,
-                        min = 6,
-                        max = 30,
-                        step = 1,
-                        get = function() return AT().fontSize end,
-                        set = function(_, val)
-                            AT().fontSize = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    lineSpacing = {
-                        type = "range",
-                        name = "行距",
-                        order = 2,
-                        min = 0,
-                        max = 20,
-                        step = 1,
-                        get = function() return AT().lineSpacing end,
-                        set = function(_, val)
-                            AT().lineSpacing = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    decimalPlaces = {
-                        type = "range",
-                        name = "小数位数",
-                        order = 3,
-                        min = 0,
-                        max = 2,
-                        step = 1,
-                        get = function() return AT().decimalPlaces end,
-                        set = function(_, val)
-                            AT().decimalPlaces = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    bgStyle = {
-                        type = "select",
-                        name = "背景样式",
-                        order = 4,
-                        values = { none = "无背景", semi = "半透明背景" },
-                        get = function() return AT().bgStyle end,
-                        set = function(_, val)
-                            AT().bgStyle = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    bgAlpha = {
-                        type = "range",
-                        name = "背景不透明度",
-                        order = 5,
-                        desc = "仅当背景样式为\"半透明背景\"时有效",
-                        min = 0,
-                        max = 1,
-                        step = 0.05,
-                        get = function() return AT().bgAlpha end,
-                        set = function(_, val)
-                            AT().bgAlpha = val; Core:UpdateAttributeDisplay()
-                        end,
-                        disabled = function() return AT().bgStyle == "none" end,
-                    },
-                    progressBarHeader = { type = "header", name = "进度条", order = 6 },
-                    progressBarEnable = {
-                        type = "toggle",
-                        name = "启用进度条",
-                        order = 7,
-                        get = function() return AT().progressBarEnable end,
-                        set = function(_, val)
-                            AT().progressBarEnable = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    progressBarTexture = {
-                        type = "select",
-                        name = "进度条材质",
-                        order = 8,
-                        dialogControl = "LSM30_Statusbar",
-                        values = LibSharedMedia:HashTable("statusbar"),
-                        get = function() return AT().progressBarTexture end,
-                        set = function(_, val)
-                            AT().progressBarTexture = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    progressBarColor = {
-                        type = "color",
-                        name = "进度条颜色",
-                        order = 9,
-                        hasAlpha = false,
-                        get = function() return AT().progressBarColor.r, AT().progressBarColor.g, AT().progressBarColor
-                            .b end,
-                        set = function(_, r, g, b)
-                            AT().progressBarColor = { r = r, g = g, b = b }; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    progressBarWidth = {
-                        type = "range",
-                        name = "进度条宽度",
-                        order = 10,
-                        min = 50,
-                        max = 300,
-                        step = 1,
-                        get = function() return AT().progressBarWidth end,
-                        set = function(_, val)
-                            AT().progressBarWidth = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                    progressBarHeight = {
-                        type = "range",
-                        name = "进度条高度",
-                        order = 11,
-                        min = 2,
-                        max = 20,
-                        step = 1,
-                        get = function() return AT().progressBarHeight end,
-                        set = function(_, val)
-                            AT().progressBarHeight = val; Core:UpdateAttributeDisplay()
-                        end,
-                    },
-                },
-            },
             format = {
                 type = "group",
                 name = "格式选项",
-                order = 40,
+                order = 30,
                 args = {
                     font = {
                         type = "select",

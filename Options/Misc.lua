@@ -26,37 +26,108 @@ function ns.BuildMiscOptions()
         args = {
             quest = {
                 type = "group",
-                name = "任务交接",
+                name = "任务助手",
                 order = 10,
-                inline = true,
                 args = {
-                    autoAnnounceQuest = {
+                    questToolsEnabled = {
                         type = "toggle",
-                        name = "通报",
-                        desc = "接取和完成任务时发送统一通报",
+                        name = "启用任务助手",
+                        desc = "开启后显示独立的任务助手框体，包含“任务通报”和“自动交接”两个切换按钮。",
                         order = 1,
-                        get = function() return MI().autoAnnounceQuest end,
+                        get = function() return MI().questToolsEnabled end,
                         set = function(_, val)
-                            MI().autoAnnounceQuest = val
+                            MI().questToolsEnabled = val
                             Core:ApplyMiscSettings()
                         end,
                     },
-                    autoQuestTurnIn = {
+                    questToolsLocked = {
                         type = "toggle",
-                        name = "自动交接",
-                        desc = "自动接取任务、完成进度、领取奖励",
+                        name = function() return MI().questToolsLocked and "解锁拖动" or "锁定框体" end,
                         order = 2,
-                        get = function() return MI().autoQuestTurnIn end,
+                        disabled = function() return not MI().questToolsEnabled end,
+                        get = function() return MI().questToolsLocked end,
                         set = function(_, val)
-                            MI().autoQuestTurnIn = val
+                            MI().questToolsLocked = val
+                            Core:ApplyMiscSettings()
+                        end,
+                    },
+                    questToolsOrientation = {
+                        type = "select",
+                        name = "排列方向",
+                        order = 3,
+                        disabled = function() return not MI().questToolsEnabled end,
+                        values = {
+                            HORIZONTAL = "横排",
+                            VERTICAL = "竖排",
+                        },
+                        get = function() return MI().questToolsOrientation or "HORIZONTAL" end,
+                        set = function(_, val)
+                            MI().questToolsOrientation = val
+                            Core:ApplyMiscSettings()
+                        end,
+                    },
+                    questToolsFont = {
+                        type = "select",
+                        name = "字体",
+                        order = 4,
+                        disabled = function() return not MI().questToolsEnabled end,
+                        dialogControl = "LSM30_Font",
+                        values = LibSharedMedia:HashTable("font"),
+                        get = function() return MI().questToolsFont or MI().font end,
+                        set = function(_, val)
+                            MI().questToolsFont = val
+                            Core:ApplyMiscSettings()
+                        end,
+                    },
+                    questToolsFontSize = {
+                        type = "range",
+                        name = "字体大小",
+                        order = 5,
+                        disabled = function() return not MI().questToolsEnabled end,
+                        min = 10,
+                        max = 24,
+                        step = 1,
+                        get = function() return MI().questToolsFontSize or 13 end,
+                        set = function(_, val)
+                            MI().questToolsFontSize = val
+                            Core:ApplyMiscSettings()
+                        end,
+                    },
+                    questToolsTextColor = {
+                        type = "color",
+                        name = "文字颜色",
+                        order = 6,
+                        disabled = function() return not MI().questToolsEnabled end,
+                        hasAlpha = false,
+                        get = function()
+                            local c = MI().questToolsTextColor or { r = 1, g = 1, b = 1 }
+                            return c.r, c.g, c.b
+                        end,
+                        set = function(_, r, g, b)
+                            MI().questToolsTextColor = { r = r, g = g, b = b }
+                            Core:ApplyMiscSettings()
+                        end,
+                    },
+                    questToolsSpacing = {
+                        type = "range",
+                        name = "项目间隔",
+                        order = 7,
+                        disabled = function() return not MI().questToolsEnabled end,
+                        min = 1,
+                        max = 300,
+                        step = 1,
+                        get = function() return MI().questToolsSpacing or 18 end,
+                        set = function(_, val)
+                            MI().questToolsSpacing = math.max(1, math.min(300, val))
                             Core:ApplyMiscSettings()
                         end,
                     },
                     announceTemplate = {
                         type = "input",
                         name = "通报模板",
-                        order = 3,
+                        order = 8,
                         width = 1.6,
+                        disabled = function() return not MI().questToolsEnabled end,
                         desc = "支持占位符：{action}=任务已接取/任务已完成、{quest}=任务名、{newline}=换行",
                         get = function() return MI().announceTemplate end,
                         set = function(_, val)
@@ -66,22 +137,20 @@ function ns.BuildMiscOptions()
                     },
                     tips = {
                         type = "description",
-                        name =
-                        "|cFFFFCC00占位符说明：|r {action}=任务已接取或任务已完成  {quest}=任务名称  {newline}=换行\n默认文案会区分接任务和完成任务，通报优先发送到副本频道，其次团队/小队频道。",
-                        order = 4,
+                        name = "任务助手会显示独立框体；“任务通报”和“自动交接”开关请直接点击框体上的按钮切换。",
+                        order = 9,
                         width = "full",
                     },
                 },
             },
             infoBar = {
                 type = "group",
-                name = "展示条",
+                name = "信息条",
                 order = 20,
-                inline = true,
                 args = {
                     infoBarEnabled = {
                         type = "toggle",
-                        name = "启用展示条",
+                        name = "启用信息条",
                         order = 1,
                         get = function() return MI().infoBarEnabled end,
                         set = function(_, val)
@@ -91,7 +160,7 @@ function ns.BuildMiscOptions()
                     },
                     infoBarLocked = {
                         type = "toggle",
-                        name = function() return MI().infoBarLocked and "解锁拖动" or "锁定展示条" end,
+                        name = function() return MI().infoBarLocked and "解锁拖动" or "锁定信息条" end,
                         order = 2,
                         get = function() return MI().infoBarLocked end,
                         set = function(_, val)
@@ -99,10 +168,24 @@ function ns.BuildMiscOptions()
                             Core:ApplyMiscSettings()
                         end,
                     },
+                    orientation = {
+                        type = "select",
+                        name = "排列方向",
+                        order = 3,
+                        values = {
+                            HORIZONTAL = "横排",
+                            VERTICAL = "竖排",
+                        },
+                        get = function() return MI().infoBarOrientation or "HORIZONTAL" end,
+                        set = function(_, val)
+                            MI().infoBarOrientation = val
+                            Core:UpdateMiscBarLayout()
+                        end,
+                    },
                     fontSize = {
                         type = "range",
                         name = "字体大小",
-                        order = 3,
+                        order = 4,
                         min = 10,
                         max = 24,
                         step = 1,
@@ -115,7 +198,7 @@ function ns.BuildMiscOptions()
                     font = {
                         type = "select",
                         name = "字体",
-                        order = 4,
+                        order = 5,
                         dialogControl = "LSM30_Font",
                         values = LibSharedMedia:HashTable("font"),
                         get = function() return MI().font end,
@@ -124,10 +207,24 @@ function ns.BuildMiscOptions()
                             Core:UpdateMiscBarLayout()
                         end,
                     },
+                    textColor = {
+                        type = "color",
+                        name = "文字颜色",
+                        order = 6,
+                        hasAlpha = false,
+                        get = function()
+                            local c = MI().textColor or { r = 1, g = 1, b = 1 }
+                            return c.r, c.g, c.b
+                        end,
+                        set = function(_, r, g, b)
+                            MI().textColor = { r = r, g = g, b = b }
+                            Core:UpdateMiscBarLayout()
+                        end,
+                    },
                     barSpacing = {
                         type = "range",
-                        name = "专精/耐久间隔",
-                        order = 5,
+                        name = "项目间隔",
+                        order = 7,
                         min = 1,
                         max = 300,
                         step = 1,
@@ -143,8 +240,8 @@ function ns.BuildMiscOptions()
                     barTips = {
                         type = "description",
                         name =
-                        "左键切专精，右键切天赋；右侧显示耐久度百分比（60%以上绿色、30~60%黄色、30%以下红色），低于60%闪烁提示，悬停列出所有装备耐久（含图标）。",
-                        order = 6,
+                        "信息条用于显示专精/天赋与耐久度；解锁后可直接拖动整条移动位置。",
+                        order = 8,
                         width = "full",
                     },
                 },
@@ -153,7 +250,6 @@ function ns.BuildMiscOptions()
                 type = "group",
                 name = "地下堡快速离开",
                 order = 25,
-                inline = true,
                 args = {
                     delveQuickLeaveEnabled = {
                         type = "toggle",
@@ -229,23 +325,34 @@ function ns.BuildMiscOptions()
             tooltip = {
                 type = "group",
                 name = "鼠标提示",
-                order = 30,
-                inline = true,
+                order = 28,
                 args = {
+                    disableAllTooltips = {
+                        type = "toggle",
+                        name = "禁止鼠标提示",
+                        desc = "勾选后尽量隐藏所有常见提示框。",
+                        order = 1,
+                        get = function() return MI().disableAllTooltips end,
+                        set = function(_, val)
+                            MI().disableAllTooltips = val
+                            Core:ApplyMiscSettings()
+                        end,
+                    },
                     tooltipFollowCursor = {
                         type = "toggle",
                         name = "鼠标提示跟随鼠标",
-                        order = 1,
+                        order = 2,
+                        disabled = function() return MI().disableAllTooltips end,
                         get = function() return MI().tooltipFollowCursor end,
                         set = function(_, val)
                             MI().tooltipFollowCursor = val
-                            Core:ApplyGlobalTooltipHook()
+                            Core:ApplyMiscSettings()
                         end,
                     },
                     tooltipDesc = {
                         type = "description",
-                        name = "启用后，游戏中所有提示框（含系统默认提示）都会跟随鼠标显示，而非固定在屏幕角落。",
-                        order = 2,
+                        name = "“禁止鼠标提示”开启后会优先隐藏提示框；关闭后可选择让提示框跟随鼠标显示。",
+                        order = 3,
                         width = "full",
                     },
                 },

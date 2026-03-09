@@ -6,6 +6,7 @@ local INFOBAR_PADDING_X = 10
 local INFOBAR_PADDING_Y = 8
 local INFOBAR_SPACING = 18
 local ICON_SIZE_BAR = 16 -- 展示条上的图标大小
+local INFOBAR_TALENT_MAX_CHARS = 10
 local DELVE_QUICK_LEAVE_DEFAULT_SIZE = 40
 local DELVE_QUICK_LEAVE_MIN_SIZE = 24
 local DELVE_QUICK_LEAVE_MAX_SIZE = 72
@@ -29,11 +30,46 @@ local DURABILITY_SLOTS = {
 
 local function MIcfg()
     local cfg = Core.db.profile.misc
+    if cfg.questToolsEnabled == nil then
+        cfg.questToolsEnabled = (cfg.autoAnnounceQuest or cfg.autoQuestTurnIn) and true or false
+    end
+    if cfg.questToolsLocked == nil then
+        cfg.questToolsLocked = true
+    end
     if cfg.autoAnnounceQuest == nil then
         cfg.autoAnnounceQuest = cfg.announceQuestAccept or cfg.announceQuestTurnIn or false
     end
     if cfg.barSpacing == nil then
         cfg.barSpacing = INFOBAR_SPACING
+    end
+    if cfg.questToolsSpacing == nil then
+        cfg.questToolsSpacing = INFOBAR_SPACING
+    end
+    if cfg.infoBarOrientation ~= "VERTICAL" then
+        cfg.infoBarOrientation = "HORIZONTAL"
+    end
+    if cfg.questToolsOrientation ~= "VERTICAL" then
+        cfg.questToolsOrientation = "HORIZONTAL"
+    end
+    if type(cfg.textColor) ~= "table" then
+        cfg.textColor = { r = 1, g = 1, b = 1 }
+    end
+    if not cfg.questToolsFont or cfg.questToolsFont == "" then
+        cfg.questToolsFont = cfg.font or "Friz Quadrata TT"
+    end
+    if not cfg.questToolsFontSize then
+        cfg.questToolsFontSize = cfg.fontSize or 13
+    end
+    if type(cfg.questToolsTextColor) ~= "table" then
+        cfg.questToolsTextColor = { r = 1, g = 1, b = 1 }
+    end
+    if not cfg.questToolsPoint then
+        cfg.questToolsPoint = {
+            point = "CENTER",
+            relativePoint = "CENTER",
+            x = 0,
+            y = -110,
+        }
     end
     if cfg.delveQuickLeaveEnabled == nil then
         cfg.delveQuickLeaveEnabled = false
@@ -77,6 +113,66 @@ local function Defer(callback)
     end
 end
 
+local function Utf8Truncate(text, maxChars)
+    if type(text) ~= "string" or text == "" or not maxChars or maxChars < 1 then
+        return text or ""
+    end
+
+    local count = 0
+    local lastByte = 0
+    for startPos, codepoint in text:gmatch("()([%z\1-\127\194-\244][\128-\191]*)") do
+        count = count + 1
+        lastByte = startPos + #codepoint - 1
+        if count >= maxChars then
+            if lastByte < #text then
+                return text:sub(1, lastByte) .. "..."
+            end
+            return text
+        end
+    end
+
+    return text
+end
+
+local function RGBToHex(r, g, b)
+    local rr = math.floor(math.max(0, math.min(1, tonumber(r) or 1)) * 255 + 0.5)
+    local gg = math.floor(math.max(0, math.min(1, tonumber(g) or 1)) * 255 + 0.5)
+    local bb = math.floor(math.max(0, math.min(1, tonumber(b) or 1)) * 255 + 0.5)
+    return string.format("%02X%02X%02X", rr, gg, bb)
+end
+
+local function GetInfoBarTextColorHex()
+    local color = MIcfg().textColor or {}
+    return RGBToHex(color.r, color.g, color.b)
+end
+
+local function GetQuestToolsTextColorHex()
+    local color = MIcfg().questToolsTextColor or {}
+    return RGBToHex(color.r, color.g, color.b)
+end
+
+local function GetVisibleInfoBarButtons(frame, cfg)
+    local buttons = {}
+    if frame.specButton then
+        table.insert(buttons, frame.specButton)
+    end
+    if frame.durabilityButton then
+        table.insert(buttons, frame.durabilityButton)
+    end
+    return buttons
+end
+
+local function GetVisibleQuestToolsButtons(frame)
+    local buttons = {}
+    if frame.announceButton then
+        table.insert(buttons, frame.announceButton)
+    end
+    if frame.turnInButton then
+        table.insert(buttons, frame.turnInButton)
+    end
+    return buttons
+end
+
 local function GetConfiguredDelveQuickLeaveIcon()
     local cfg = MIcfg()
     local icon = cfg.delveQuickLeaveCustomIcon
@@ -104,6 +200,18 @@ end
 --  全局 Tooltip 跟随鼠标 Hook
 -- ═══════════════════════════════════════════════════
 local globalTooltipHooked = false
+local tooltipVisibilityHooked = false
+local TOOLTIP_FRAME_NAMES = {
+    "GameTooltip",
+    "ItemRefTooltip",
+    "ItemRefShoppingTooltip1",
+    "ItemRefShoppingTooltip2",
+    "ShoppingTooltip1",
+    "ShoppingTooltip2",
+    "EmbeddedItemTooltip",
+    "WorldMapTooltip",
+    "FriendsTooltip",
+}
 
 function Core:ApplyGlobalTooltipHook()
     if globalTooltipHooked then return end
@@ -113,14 +221,51 @@ function Core:ApplyGlobalTooltipHook()
     -- 此函数在系统需要显示默认位置 tooltip 时调用
     hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
         local cfg = Core.db and Core.db.profile and Core.db.profile.misc
-        if not cfg or not cfg.tooltipFollowCursor then return end
+        if not cfg or cfg.disableAllTooltips or not cfg.tooltipFollowCursor then return end
         tooltip:SetOwner(parent, "ANCHOR_CURSOR_RIGHT")
     end)
+end
+
+function Core:ApplyTooltipVisibilityHook()
+    if tooltipVisibilityHooked then return end
+    tooltipVisibilityHooked = true
+
+    local function HideTooltipIfDisabled(self)
+        local cfg = Core.db and Core.db.profile and Core.db.profile.misc
+        if cfg and cfg.disableAllTooltips then
+            self:Hide()
+        end
+    end
+
+    for _, frameName in ipairs(TOOLTIP_FRAME_NAMES) do
+        local tooltip = _G[frameName]
+        if tooltip and tooltip.HookScript then
+            tooltip:HookScript("OnShow", HideTooltipIfDisabled)
+        end
+    end
+end
+
+function Core:UpdateTooltipVisibility()
+    self:ApplyTooltipVisibilityHook()
+
+    local cfg = MIcfg()
+    if not cfg.disableAllTooltips then return end
+
+    for _, frameName in ipairs(TOOLTIP_FRAME_NAMES) do
+        local tooltip = _G[frameName]
+        if tooltip and tooltip.Hide then
+            tooltip:Hide()
+        end
+    end
 end
 
 function Core:SetTooltipAnchor(tooltip, owner, fallbackAnchor)
     if not tooltip then return end
     local cfg = self.db and self.db.profile and self.db.profile.misc
+    if cfg and cfg.disableAllTooltips then
+        tooltip:Hide()
+        return
+    end
     if cfg and cfg.tooltipFollowCursor then
         tooltip:SetOwner(owner or UIParent, "ANCHOR_CURSOR_RIGHT")
     else
@@ -257,12 +402,12 @@ function Core:UpdateMiscEventRegistration()
     self.miscEventFrame:UnregisterAllEvents()
 
     local cfg = MIcfg()
-    if cfg.autoAnnounceQuest then
+    if cfg.questToolsEnabled and cfg.autoAnnounceQuest then
         self.miscEventFrame:RegisterEvent("QUEST_ACCEPTED")
         self.miscEventFrame:RegisterEvent("QUEST_TURNED_IN")
     end
 
-    if cfg.autoQuestTurnIn then
+    if cfg.questToolsEnabled and cfg.autoQuestTurnIn then
         self.miscEventFrame:RegisterEvent("QUEST_DETAIL")
         self.miscEventFrame:RegisterEvent("QUEST_PROGRESS")
         self.miscEventFrame:RegisterEvent("QUEST_COMPLETE")
@@ -284,6 +429,16 @@ function Core:SaveMiscBarPosition()
     if not self.miscFrame then return end
     local point, _, relativePoint, x, y = self.miscFrame:GetPoint(1)
     local pos = MIcfg().barPoint
+    pos.point = point or "CENTER"
+    pos.relativePoint = relativePoint or "CENTER"
+    pos.x = math.floor((x or 0) + 0.5)
+    pos.y = math.floor((y or 0) + 0.5)
+end
+
+function Core:SaveQuestToolsPosition()
+    if not self.questToolsFrame then return end
+    local point, _, relativePoint, x, y = self.questToolsFrame:GetPoint(1)
+    local pos = MIcfg().questToolsPoint
     pos.point = point or "CENTER"
     pos.relativePoint = relativePoint or "CENTER"
     pos.x = math.floor((x or 0) + 0.5)
@@ -750,6 +905,20 @@ function Core:OpenCharacterFrame()
     ToggleCharacter("PaperDollFrame")
 end
 
+function Core:ToggleQuestAnnounce()
+    local cfg = MIcfg()
+    if not cfg.questToolsEnabled then return end
+    cfg.autoAnnounceQuest = not cfg.autoAnnounceQuest
+    self:ApplyMiscSettings()
+end
+
+function Core:ToggleQuestTurnIn()
+    local cfg = MIcfg()
+    if not cfg.questToolsEnabled then return end
+    cfg.autoQuestTurnIn = not cfg.autoQuestTurnIn
+    self:ApplyMiscSettings()
+end
+
 -- ═══════════════════════════════════════════════════
 --  耐久度闪烁动画
 -- ═══════════════════════════════════════════════════
@@ -778,13 +947,15 @@ function Core:UpdateMiscBarLayout()
     local barSpacing = math.max(1, math.min(300, tonumber(cfg.barSpacing) or INFOBAR_SPACING))
     local fontPath = LibSharedMedia:Fetch("font", cfg.font) or STANDARD_TEXT_FONT
     local fontSize = cfg.fontSize
+    local textColor = cfg.textColor or { r = 1, g = 1, b = 1 }
+    local labelHex = GetInfoBarTextColorHex()
 
     frame.specButton.text:SetFont(fontPath, fontSize, "OUTLINE")
     frame.durabilityButton.text:SetFont(fontPath, fontSize, "OUTLINE")
 
     -- 专精图标
     local specName, specIcon = self:GetCurrentSpecializationName()
-    local talentName = self:GetCurrentTalentLoadoutName()
+    local talentName = Utf8Truncate(self:GetCurrentTalentLoadoutName(), INFOBAR_TALENT_MAX_CHARS)
     local specText = string.format("%s / %s", specName, talentName)
 
     if specIcon and frame.specButton.icon then
@@ -798,6 +969,7 @@ function Core:UpdateMiscBarLayout()
         frame.specButton.text:SetPoint("LEFT", frame.specButton, "LEFT", INFOBAR_PADDING_X, 0)
     end
     frame.specButton.text:SetText(specText)
+    frame.specButton.text:SetTextColor(textColor.r or 1, textColor.g or 1, textColor.b or 1, 1)
 
     -- 耐久度：标签白色，百分比按阈值着色
     local durabilityPercent = select(1, self:GetDurabilityEntries())
@@ -809,7 +981,7 @@ function Core:UpdateMiscBarLayout()
     else
         pctColorCode = "|cFFFF3333" -- 红色
     end
-    local durabilityText = string.format("|cFFFFFFFF耐久度：|r%s%d%%|r", pctColorCode, durabilityPercent)
+    local durabilityText = string.format("|cFF%s耐久度：|r%s%d%%|r", labelHex, pctColorCode, durabilityPercent)
     frame.durabilityButton.text:SetText(durabilityText)
     frame.durabilityButton.text:SetTextColor(1, 1, 1, 1)
 
@@ -829,12 +1001,33 @@ function Core:UpdateMiscBarLayout()
 
     frame.specButton:SetSize(specWidth, height)
     frame.durabilityButton:SetSize(durabilityWidth, height)
-    frame:SetSize(specWidth + durabilityWidth + barSpacing, height)
 
-    frame.specButton:ClearAllPoints()
-    frame.specButton:SetPoint("LEFT", frame, "LEFT", 0, 0)
-    frame.durabilityButton:ClearAllPoints()
-    frame.durabilityButton:SetPoint("LEFT", frame.specButton, "RIGHT", barSpacing, 0)
+    local buttons = GetVisibleInfoBarButtons(frame, cfg)
+    local totalWidth = 0
+    local totalHeight = 0
+
+    for index, button in ipairs(buttons) do
+        button:ClearAllPoints()
+        if cfg.infoBarOrientation == "VERTICAL" then
+            if index == 1 then
+                button:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+            else
+                button:SetPoint("TOPLEFT", buttons[index - 1], "BOTTOMLEFT", 0, -barSpacing)
+            end
+            totalWidth = math.max(totalWidth, button:GetWidth())
+            totalHeight = totalHeight + button:GetHeight() + (index > 1 and barSpacing or 0)
+        else
+            if index == 1 then
+                button:SetPoint("LEFT", frame, "LEFT", 0, 0)
+            else
+                button:SetPoint("LEFT", buttons[index - 1], "RIGHT", barSpacing, 0)
+            end
+            totalWidth = totalWidth + button:GetWidth() + (index > 1 and barSpacing or 0)
+            totalHeight = math.max(totalHeight, button:GetHeight())
+        end
+    end
+
+    frame:SetSize(math.max(totalWidth, 1), math.max(totalHeight, height))
 
     if frame.specButton.icon then
         frame.specButton.icon:SetSize(ICON_SIZE_BAR, ICON_SIZE_BAR)
@@ -848,6 +1041,82 @@ function Core:UpdateMiscBarLayout()
         frame.bg:SetColorTexture(0, 0.6, 1, 0.12)
         frame.specButton.bg:SetColorTexture(0, 0, 0, 0.28)
         frame.durabilityButton.bg:SetColorTexture(0, 0, 0, 0.28)
+    end
+end
+
+function Core:UpdateQuestToolsLayout()
+    if not self.questToolsFrame then return end
+
+    local cfg = MIcfg()
+    local frame = self.questToolsFrame
+    local spacing = math.max(1, math.min(300, tonumber(cfg.questToolsSpacing) or INFOBAR_SPACING))
+    local fontPath = LibSharedMedia:Fetch("font", cfg.questToolsFont) or STANDARD_TEXT_FONT
+    local fontSize = cfg.questToolsFontSize or 13
+    local color = cfg.questToolsTextColor or { r = 1, g = 1, b = 1 }
+    local labelHex = GetQuestToolsTextColorHex()
+
+    frame.announceButton.text:SetFont(fontPath, fontSize, "OUTLINE")
+    frame.turnInButton.text:SetFont(fontPath, fontSize, "OUTLINE")
+
+    local announceState = cfg.autoAnnounceQuest and "|cFF33FF33开|r" or "|cFFFF5555关|r"
+    local turnInState = cfg.autoQuestTurnIn and "|cFF33FF33开|r" or "|cFFFF5555关|r"
+    frame.announceButton.text:SetText(string.format("|cFF%s任务通报：|r%s", labelHex, announceState))
+    frame.turnInButton.text:SetText(string.format("|cFF%s自动交接：|r%s", labelHex, turnInState))
+    frame.announceButton.text:SetTextColor(1, 1, 1, 1)
+    frame.turnInButton.text:SetTextColor(1, 1, 1, 1)
+
+    local height = math.max(26, math.ceil(frame.announceButton.text:GetStringHeight() + INFOBAR_PADDING_Y * 2))
+    local announceWidth = math.max(118, math.ceil(frame.announceButton.text:GetStringWidth() + INFOBAR_PADDING_X * 2))
+    local turnInWidth = math.max(118, math.ceil(frame.turnInButton.text:GetStringWidth() + INFOBAR_PADDING_X * 2))
+
+    frame.announceButton:SetSize(announceWidth, height)
+    frame.turnInButton:SetSize(turnInWidth, height)
+
+    local buttons = GetVisibleQuestToolsButtons(frame)
+    local totalWidth = 0
+    local totalHeight = 0
+
+    for index, button in ipairs(buttons) do
+        button:ClearAllPoints()
+        if cfg.questToolsOrientation == "VERTICAL" then
+            if index == 1 then
+                button:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+            else
+                button:SetPoint("TOPLEFT", buttons[index - 1], "BOTTOMLEFT", 0, -spacing)
+            end
+            totalWidth = math.max(totalWidth, button:GetWidth())
+            totalHeight = totalHeight + button:GetHeight() + (index > 1 and spacing or 0)
+        else
+            if index == 1 then
+                button:SetPoint("LEFT", frame, "LEFT", 0, 0)
+            else
+                button:SetPoint("LEFT", buttons[index - 1], "RIGHT", spacing, 0)
+            end
+            totalWidth = totalWidth + button:GetWidth() + (index > 1 and spacing or 0)
+            totalHeight = math.max(totalHeight, button:GetHeight())
+        end
+    end
+
+    frame:SetSize(math.max(totalWidth, 1), math.max(totalHeight, height))
+    frame:SetMovable(not cfg.questToolsLocked)
+
+    if cfg.questToolsLocked then
+        frame.bg:SetColorTexture(0, 0, 0, 0)
+        frame.announceButton.bg:SetColorTexture(0, 0, 0, 0)
+        frame.turnInButton.bg:SetColorTexture(0, 0, 0, 0)
+    else
+        frame.bg:SetColorTexture(0, 0.6, 1, 0.12)
+        frame.announceButton.bg:SetColorTexture(0, 0, 0, 0.28)
+        frame.turnInButton.bg:SetColorTexture(0, 0, 0, 0.28)
+    end
+end
+
+function Core:UpdateQuestToolsVisibility()
+    if not self.questToolsFrame then return end
+    if MIcfg().questToolsEnabled then
+        self.questToolsFrame:Show()
+    else
+        self.questToolsFrame:Hide()
     end
 end
 
@@ -904,14 +1173,22 @@ function Core:ApplyMiscSettings()
         self:UpdateMiscBarVisibility()
     end
 
+    if self.questToolsFrame then
+        self.questToolsFrame:SetMovable(not cfg.questToolsLocked)
+        self.questToolsFrame:EnableMouse(true)
+        self:UpdateQuestToolsLayout()
+        self:UpdateQuestToolsVisibility()
+    end
+
     self:UpdateDelveQuickLeaveButton()
     self:UpdateDelveQuickLeaveVisibility()
     self:UpdateMiscEventRegistration()
     self:ApplyGlobalTooltipHook()
+    self:UpdateTooltipVisibility()
 end
 
 -- ═══════════════════════════════════════════════════
---  展示条创建
+--  信息条创建
 -- ═══════════════════════════════════════════════════
 
 function Core:CreateMiscBar()
@@ -945,6 +1222,7 @@ function Core:CreateMiscBar()
     local function CreateSectionButton(parent, withIcon)
         local button = CreateFrame("Button", nil, parent)
         button:RegisterForClicks("AnyUp")
+        button:RegisterForDrag("LeftButton")
         button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
 
         button.bg = button:CreateTexture(nil, "BACKGROUND")
@@ -961,6 +1239,18 @@ function Core:CreateMiscBar()
             button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             button.text:SetPoint("CENTER")
         end
+
+        button:SetScript("OnDragStart", function()
+            if MIcfg().infoBarLocked then return end
+            Core:HideMiscPopupMenu()
+            parent:StartMoving()
+        end)
+
+        button:SetScript("OnDragStop", function()
+            if MIcfg().infoBarLocked then return end
+            parent:StopMovingOrSizing()
+            Core:SaveMiscBarPosition()
+        end)
 
         return button
     end
@@ -1044,6 +1334,7 @@ function Core:CreateMiscBar()
     end)
 
     self.miscFrame = frame
+    self:CreateQuestToolsFrame()
     self:CreateDelveQuickLeaveButton()
 
     -- ── 事件帧 ──
@@ -1088,6 +1379,95 @@ function Core:CreateMiscBar()
     end)
 
     self:ApplyMiscSettings()
+end
+
+function Core:CreateQuestToolsFrame()
+    if self.questToolsFrame then return end
+
+    local cfg = MIcfg()
+    local frame = CreateFrame("Frame", addonName .. "QuestToolsFrame", UIParent)
+    frame:SetFrameStrata("LOW")
+    frame:SetClampedToScreen(true)
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+
+    frame.bg = frame:CreateTexture(nil, "BACKGROUND")
+    frame.bg:SetAllPoints(frame)
+
+    local pos = cfg.questToolsPoint
+    frame:SetPoint(pos.point or "CENTER", UIParent, pos.relativePoint or "CENTER", pos.x or 0, pos.y or -110)
+
+    frame:SetScript("OnDragStart", function(self)
+        if MIcfg().questToolsLocked then return end
+        self:StartMoving()
+    end)
+
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        Core:SaveQuestToolsPosition()
+    end)
+
+    local function CreateQuestButton(parent)
+        local button = CreateFrame("Button", nil, parent)
+        button:RegisterForClicks("AnyUp")
+        button:RegisterForDrag("LeftButton")
+        button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight")
+
+        button.bg = button:CreateTexture(nil, "BACKGROUND")
+        button.bg:SetAllPoints(button)
+
+        button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        button.text:SetPoint("CENTER")
+
+        button:SetScript("OnDragStart", function()
+            if MIcfg().questToolsLocked then return end
+            parent:StartMoving()
+        end)
+
+        button:SetScript("OnDragStop", function()
+            if MIcfg().questToolsLocked then return end
+            parent:StopMovingOrSizing()
+            Core:SaveQuestToolsPosition()
+        end)
+
+        return button
+    end
+
+    frame.announceButton = CreateQuestButton(frame)
+    frame.turnInButton = CreateQuestButton(frame)
+
+    frame.announceButton:SetScript("OnEnter", function(self)
+        Core:SetTooltipAnchor(GameTooltip, self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine("任务通报", 1, 0.82, 0)
+        GameTooltip:AddLine(MIcfg().autoAnnounceQuest and "当前：已开启" or "当前：已关闭", 1, 1, 1)
+        GameTooltip:AddLine("点击切换接取/完成任务时的聊天通报。", 0.75, 1, 0.75)
+        GameTooltip:Show()
+    end)
+    frame.announceButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    frame.announceButton:SetScript("OnClick", function(_, button)
+        if button == "LeftButton" then
+            Core:ToggleQuestAnnounce()
+        end
+    end)
+
+    frame.turnInButton:SetScript("OnEnter", function(self)
+        Core:SetTooltipAnchor(GameTooltip, self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine("自动交接", 1, 0.82, 0)
+        GameTooltip:AddLine(MIcfg().autoQuestTurnIn and "当前：已开启" or "当前：已关闭", 1, 1, 1)
+        GameTooltip:AddLine("点击切换自动接任务、交任务和领奖。", 0.75, 1, 0.75)
+        GameTooltip:Show()
+    end)
+    frame.turnInButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    frame.turnInButton:SetScript("OnClick", function(_, button)
+        if button == "LeftButton" then
+            Core:ToggleQuestTurnIn()
+        end
+    end)
+
+    self.questToolsFrame = frame
+    self:UpdateQuestToolsLayout()
+    self:UpdateQuestToolsVisibility()
 end
 
 function Core:CreateDelveQuickLeaveButton()

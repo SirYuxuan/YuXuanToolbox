@@ -99,7 +99,6 @@ local function BuildOrderArgs(refreshOrder)
             type = "group",
             name = rowLabel,
             order = rowOrder,
-            inline = true,
             args = {
                 up = {
                     type = "execute",
@@ -258,7 +257,6 @@ function ns.BuildCurrencyOptions()
                         type = "group",
                         name = "启用",
                         order = 10,
-                        inline = true,
                         args = {
                             enabled = {
                                 type = "toggle",
@@ -302,7 +300,6 @@ function ns.BuildCurrencyOptions()
                         type = "group",
                         name = "布局",
                         order = 20,
-                        inline = true,
                         args = {
                             orientation = {
                                 type = "select",
@@ -352,7 +349,6 @@ function ns.BuildCurrencyOptions()
                         type = "group",
                         name = "样式",
                         order = 30,
-                        inline = true,
                         args = {
                             iconSize = {
                                 type = "range",
@@ -417,6 +413,7 @@ function ns.BuildCurrencyOptions()
                 type = "group",
                 name = "顺序排序",
                 order = 3,
+                childGroups = "tree",
                 args = {},
             },
         },

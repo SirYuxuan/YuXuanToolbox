@@ -24,6 +24,17 @@ local function GetCurrencyInfoByID(currencyID)
     return nil
 end
 
+local function SetCurrencyHeaderExpanded(index, expanded)
+    if not (C_CurrencyInfo and C_CurrencyInfo.ExpandCurrencyList) then
+        return
+    end
+
+    local ok = pcall(C_CurrencyInfo.ExpandCurrencyList, index, expanded and 1 or 0)
+    if not ok then
+        pcall(C_CurrencyInfo.ExpandCurrencyList, index, expanded and true or false)
+    end
+end
+
 -- Catalog: group currencies by their list headers
 
 function Core:RefreshCurrencyCatalog()
@@ -37,6 +48,23 @@ function Core:RefreshCurrencyCatalog()
 
     local listSize = C_CurrencyInfo.GetCurrencyListSize()
     local currentHeader = nil
+    local headerStates = {}
+
+    for i = 1, listSize do
+        local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+        if info and info.isHeader and info.name and info.name ~= "" then
+            headerStates[info.name] = info.isHeaderExpanded and true or false
+        end
+    end
+
+    for i = listSize, 1, -1 do
+        local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+        if info and info.isHeader then
+            SetCurrencyHeaderExpanded(i, true)
+        end
+    end
+
+    listSize = C_CurrencyInfo.GetCurrencyListSize()
 
     for i = 1, listSize do
         local info = C_CurrencyInfo.GetCurrencyListInfo(i)
@@ -69,6 +97,13 @@ function Core:RefreshCurrencyCatalog()
                 }
                 table.insert(self.currencyHeaders[fallback], info.currencyID)
             end
+        end
+    end
+
+    for i = listSize, 1, -1 do
+        local info = C_CurrencyInfo.GetCurrencyListInfo(i)
+        if info and info.isHeader and info.name and headerStates[info.name] ~= nil then
+            SetCurrencyHeaderExpanded(i, headerStates[info.name])
         end
     end
 end

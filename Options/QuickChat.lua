@@ -20,7 +20,6 @@ local function BuildButtonListArgs(refreshButtonManagement)
         args["btn_" .. key] = {
             type = "group",
             name = prefix .. def.label,
-            inline = true,
             order = idx,
             args = {
                 color = {
@@ -154,12 +153,12 @@ function ns.BuildQuickChatOptions()
         type = "group",
         name = "快捷频道",
         order = 10,
+        childGroups = "tab",
         args = {
             basic = {
                 type = "group",
-                name = "基本设置",
+                name = "基础设置",
                 order = 1,
-                inline = true,
                 args = {
                     enabled = {
                         type = "toggle",
@@ -191,18 +190,10 @@ function ns.BuildQuickChatOptions()
                             QC().worldChannelName = name
                         end,
                     },
-                },
-            },
-            display = {
-                type = "group",
-                name = "显示设置",
-                order = 2,
-                inline = true,
-                args = {
                     spacing = {
                         type = "range",
                         name = "按钮间隔",
-                        order = 1,
+                        order = 10,
                         min = 0,
                         max = 30,
                         step = 1,
@@ -214,7 +205,7 @@ function ns.BuildQuickChatOptions()
                     fontSize = {
                         type = "range",
                         name = "文字大小",
-                        order = 2,
+                        order = 11,
                         min = 10,
                         max = 32,
                         step = 1,
@@ -226,7 +217,7 @@ function ns.BuildQuickChatOptions()
                     font = {
                         type = "select",
                         name = "字体",
-                        order = 3,
+                        order = 12,
                         dialogControl = "LSM30_Font",
                         values = LibSharedMedia:HashTable("font"),
                         get = function() return QC().font end,
@@ -239,14 +230,14 @@ function ns.BuildQuickChatOptions()
             buttonManagement = {
                 type = "group",
                 name = "按钮管理",
-                order = 3,
+                order = 2,
+                childGroups = "tree",
                 args = {},
             },
             addCustom = {
                 type = "group",
                 name = "添加自定义按钮",
-                order = 4,
-                inline = true,
+                order = 3,
                 args = {
                     newLabel = {
                         type = "input",

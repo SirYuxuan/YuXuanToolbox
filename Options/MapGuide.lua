@@ -153,7 +153,6 @@ local function BuildCustomMarkerListArgs(onChanged)
                 type = "group",
                 name = string.format("|cFF%s●|r %s", colorHex, displayTitle),
                 order = displayOrder,
-                inline = true,
                 args = {
                     info = {
                         type = "description",
@@ -497,7 +496,6 @@ function ns.BuildMapGuideOptions()
                         type = "group",
                         name = "",
                         order = 41,
-                        inline = true,
                         args = BuildCityArgs({
                             { "Stormwind", "暴风城" },
                             { "Ironforge", "铁炉堡" },
@@ -520,7 +518,6 @@ function ns.BuildMapGuideOptions()
                         type = "group",
                         name = "",
                         order = 51,
-                        inline = true,
                         args = BuildCityArgs({
                             { "Orgrimmar", "奥格瑞玛" },
                             { "ThunderBluff", "雷霆崖" },
@@ -540,7 +537,6 @@ function ns.BuildMapGuideOptions()
                         type = "group",
                         name = "",
                         order = 61,
-                        inline = true,
                         args = BuildCityArgs({
                             { "Shattrath", "沙塔斯" },
                             { "DalaranNorthrend", "达拉然（诺森德）" },
@@ -569,7 +565,6 @@ function ns.BuildMapGuideOptions()
                         type = "group",
                         name = "",
                         order = 71,
-                        inline = true,
                         args = BuildCityArgs({
                             { "Darkmoonfaire", "暗月马戏团" },
                             { "IsleofDorn", "多恩岛" },
@@ -688,7 +683,6 @@ function ns.BuildMapGuideOptions()
                         type = "group",
                         name = "",
                         order = 21,
-                        inline = true,
                         args = {},
                     },
                 },

@@ -125,12 +125,12 @@ function ns.BuildCastBarOptions()
         type = "group",
         name = "施法条",
         order = 30,
+        childGroups = "tab",
         args = {
-            global = {
+            general = {
                 type = "group",
-                name = "全局设置",
+                name = "通用设置",
                 order = 1,
-                inline = true,
                 args = {
                     locked = {
                         type = "toggle",
@@ -160,18 +160,10 @@ function ns.BuildCastBarOptions()
                             CBcfg().hideBlizzardTarget = v; Core:ApplyCastBarSettings()
                         end,
                     },
-                },
-            },
-            appearance = {
-                type = "group",
-                name = "外观",
-                order = 2,
-                inline = true,
-                args = {
                     texture = {
                         type = "select",
                         name = "材质",
-                        order = 1,
+                        order = 10,
                         dialogControl = "LSM30_Statusbar",
                         values = LibSharedMedia:HashTable("statusbar"),
                         get = function() return CBcfg().texture end,
@@ -182,7 +174,7 @@ function ns.BuildCastBarOptions()
                     font = {
                         type = "select",
                         name = "字体",
-                        order = 2,
+                        order = 11,
                         dialogControl = "LSM30_Font",
                         values = LibSharedMedia:HashTable("font"),
                         get = function() return CBcfg().font end,
@@ -193,7 +185,7 @@ function ns.BuildCastBarOptions()
                     fontSize = {
                         type = "range",
                         name = "字体大小",
-                        order = 3,
+                        order = 12,
                         min = 6,
                         max = 24,
                         step = 1,
@@ -205,25 +197,17 @@ function ns.BuildCastBarOptions()
                     outline = {
                         type = "select",
                         name = "字体描边",
-                        order = 4,
+                        order = 13,
                         values = { OUTLINE = "描边", THICKOUTLINE = "粗描边", NONE = "无" },
                         get = function() return CBcfg().outline end,
                         set = function(_, v)
                             CBcfg().outline = v; Core:ApplyCastBarSettings()
                         end,
                     },
-                },
-            },
-            colors = {
-                type = "group",
-                name = "颜色",
-                order = 3,
-                inline = true,
-                args = {
                     colorCast = {
                         type = "color",
                         name = "施法颜色",
-                        order = 1,
+                        order = 20,
                         hasAlpha = true,
                         get = function()
                             local c = CBcfg().colorCast
@@ -237,7 +221,7 @@ function ns.BuildCastBarOptions()
                     colorChannel = {
                         type = "color",
                         name = "引导颜色",
-                        order = 2,
+                        order = 21,
                         hasAlpha = true,
                         get = function()
                             local c = CBcfg().colorChannel
