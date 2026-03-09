@@ -70,6 +70,12 @@ local function BuildAboutOptions()
                 order = 15,
                 fontSize = "medium",
             },
+            feature6 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF收益计时器|r - 使用 /timer 打开窗口，统计一段时间内的金币和经验变化",
+                order = 16,
+                fontSize = "medium",
+            },
             spacer3 = { type = "description", name = " ", order = 20, width = "full" },
             headerCommands = {
                 type = "header",
@@ -98,6 +104,12 @@ local function BuildAboutOptions()
                 type = "description",
                 name = "|cFFFFFF00/yxpin|r - 快速添加当前位置到地图标记",
                 order = 34,
+                fontSize = "medium",
+            },
+            cmd5 = {
+                type = "description",
+                name = "|cFFFFFF00/timer|r - 打开收益计时器窗口",
+                order = 35,
                 fontSize = "medium",
             },
             spacer4 = { type = "description", name = " ", order = 40, width = "full" },
@@ -141,6 +153,7 @@ local function GetOptions()
             misc = ns.BuildMiscOptions(),
             attribute = ns.BuildAttributeOptions(),
             currency = ns.BuildCurrencyOptions(),
+            levelingTip = ns.BuildLevelingTipOptions(),
             castBar = ns.BuildCastBarOptions(),
             mapGuide = ns.BuildMapGuideOptions(),
             profiles = {

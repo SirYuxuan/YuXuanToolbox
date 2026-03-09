@@ -67,6 +67,10 @@ local Core = {
     miscFrame = nil,
     miscDropdown = nil,
     miscEventFrame = nil,
+    timerFrame = nil,
+    timerSession = nil,
+    levelingTipFrame = nil,
+    levelingTipState = nil,
 }
 
 -- Backward compat: Core.util points to ns.util (populated by Utils.lua)
@@ -164,6 +168,14 @@ Core.DEFAULTS = {
             questToolsEnabled = false,
             questToolsLocked = true,
             questToolsOrientation = "HORIZONTAL",
+            levelingTipEnabled = false,
+            levelingTipLocked = true,
+            levelingTipFont = "Friz Quadrata TT",
+            levelingTipFontSize = 13,
+            levelingTipShowXPPerMinute = true,
+            levelingTipShowRemainingXP = true,
+            levelingTipShowLevelETA = true,
+            levelingTipShowMaxETA = true,
             autoAnnounceQuest = false,
             autoQuestTurnIn = false,
             announceTemplate = "|cFF33FF99【雨轩工具箱】|r |cFFFFFF00{action}|r：{quest}",
@@ -204,6 +216,12 @@ Core.DEFAULTS = {
                 relativePoint = "CENTER",
                 x = 0,
                 y = -110,
+            },
+            levelingTipPoint = {
+                point = "CENTER",
+                relativePoint = "CENTER",
+                x = 0,
+                y = -70,
             },
             delveQuickLeavePoint = {
                 point = "CENTER",
@@ -482,6 +500,13 @@ function Core:RegisterSlashCommands()
         else
             local AceConfigDialog = LibStub("AceConfigDialog-3.0")
             AceConfigDialog:Open(addonName)
+        end
+    end
+
+    SLASH_YuXuanToolboxTimer1 = "/timer"
+    SlashCmdList["YuXuanToolboxTimer"] = function()
+        if self.ToggleTimerWindow then
+            self:ToggleTimerWindow()
         end
     end
 end

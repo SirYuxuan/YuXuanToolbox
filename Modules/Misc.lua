@@ -196,6 +196,58 @@ local function GetConfiguredDelveQuickLeaveIcon()
     return icon
 end
 
+local function FormatMoneyDelta(copper)
+    local amount = tonumber(copper) or 0
+    local prefix = amount >= 0 and "+" or "-"
+    amount = math.abs(math.floor(amount))
+
+    if GetMoneyString then
+        return prefix .. GetMoneyString(amount, true)
+    end
+
+    local gold = math.floor(amount / 10000)
+    local silver = math.floor((amount % 10000) / 100)
+    local bronze = amount % 100
+    return string.format("%s%dg %ds %dc", prefix, gold, silver, bronze)
+end
+
+local function FormatElapsedTime(seconds)
+    local total = math.max(0, math.floor(tonumber(seconds) or 0))
+    local hours = math.floor(total / 3600)
+    local minutes = math.floor((total % 3600) / 60)
+    local secs = total % 60
+
+    if hours > 0 then
+        return string.format("%02d:%02d:%02d", hours, minutes, secs)
+    end
+    return string.format("%02d:%02d", minutes, secs)
+end
+
+local function FormatClockTimeFromNow(seconds)
+    local eta = math.max(0, math.floor(tonumber(seconds) or 0))
+    if eta <= 0 then
+        return "--"
+    end
+    if time and date then
+        return date("%H:%M", time() + eta)
+    end
+    return FormatElapsedTime(eta)
+end
+
+local function GetPlayerMaxLevelSafe()
+    if type(GetMaxPlayerLevel) == "function" then
+        local maxLevel = GetMaxPlayerLevel()
+        if type(maxLevel) == "number" and maxLevel > 0 then
+            return maxLevel
+        end
+    end
+    local fallbackMaxLevel = _G and rawget(_G, "MAX_PLAYER_LEVEL")
+    if type(fallbackMaxLevel) == "number" and fallbackMaxLevel > 0 then
+        return fallbackMaxLevel
+    end
+    return 80
+end
+
 -- ═══════════════════════════════════════════════════
 --  全局 Tooltip 跟随鼠标 Hook
 -- ═══════════════════════════════════════════════════
@@ -423,6 +475,11 @@ function Core:UpdateMiscEventRegistration()
     self.miscEventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     self.miscEventFrame:RegisterEvent("WALK_IN_DATA_UPDATE")
     self.miscEventFrame:RegisterEvent("ACTIVE_DELVE_DATA_UPDATE")
+
+    if cfg.levelingTipEnabled then
+        self.miscEventFrame:RegisterEvent("PLAYER_XP_UPDATE")
+        self.miscEventFrame:RegisterEvent("PLAYER_LEVEL_UP")
+    end
 end
 
 function Core:SaveMiscBarPosition()
@@ -919,6 +976,348 @@ function Core:ToggleQuestTurnIn()
     self:ApplyMiscSettings()
 end
 
+function Core:RefreshTimerWindow()
+    local frame = self.timerFrame
+    if not frame then return end
+
+    local session = self.timerSession or {}
+    local isRunning = session.running == true
+    local elapsed = session.elapsed or 0
+    if isRunning and session.startedAt then
+        elapsed = GetTime() - session.startedAt
+    end
+
+    frame.statusValue:SetText(isRunning and "进行中" or "已停止")
+    frame.elapsedValue:SetText(FormatElapsedTime(elapsed))
+    frame.moneyValue:SetText(FormatMoneyDelta(session.moneyDelta or 0))
+
+    if session.xpSupported == false then
+        frame.xpValue:SetText("当前角色无经验条")
+    else
+        frame.xpValue:SetText(string.format("+%d", session.xpDelta or 0))
+    end
+
+    frame.startButton:Enable()
+    frame.stopButton:SetEnabled(isRunning)
+end
+
+function Core:UpdateTimerMoneyDelta()
+    local session = self.timerSession
+    if not session or not session.running then return end
+
+    local currentMoney = GetMoney and GetMoney() or 0
+    session.moneyDelta = currentMoney - (session.startMoney or currentMoney)
+end
+
+function Core:UpdateTimerXPDelta()
+    local session = self.timerSession
+    if not session or not session.running then return end
+
+    local currentXPMax = UnitXPMax and UnitXPMax("player") or 0
+    local currentXP = UnitXP and UnitXP("player") or 0
+    local currentLevel = UnitLevel and UnitLevel("player") or 0
+
+    if not currentXPMax or currentXPMax <= 0 then
+        session.xpSupported = false
+        session.prevXP = currentXP or 0
+        session.prevXPMax = currentXPMax or 0
+        session.prevLevel = currentLevel or 0
+        return
+    end
+
+    session.xpSupported = true
+
+    local prevXP = session.prevXP or currentXP
+    local prevXPMax = session.prevXPMax or currentXPMax
+    local prevLevel = session.prevLevel or currentLevel
+
+    if currentLevel > prevLevel then
+        session.xpDelta = (session.xpDelta or 0) + math.max(0, (prevXPMax or 0) - (prevXP or 0)) + currentXP
+    elseif currentXP >= prevXP then
+        session.xpDelta = (session.xpDelta or 0) + (currentXP - prevXP)
+    elseif currentXP < prevXP then
+        session.xpDelta = (session.xpDelta or 0) + currentXP
+    end
+
+    session.prevXP = currentXP
+    session.prevXPMax = currentXPMax
+    session.prevLevel = currentLevel
+end
+
+function Core:HandleTimerTrackingEvent(event, ...)
+    local session = self.timerSession
+    if not session or not session.running then return end
+
+    if event == "PLAYER_MONEY" then
+        self:UpdateTimerMoneyDelta()
+    elseif event == "PLAYER_XP_UPDATE" then
+        local unit = ...
+        if unit == "player" then
+            self:UpdateTimerXPDelta()
+        end
+    elseif event == "PLAYER_LEVEL_UP" then
+        self:UpdateTimerXPDelta()
+    end
+
+    self:RefreshTimerWindow()
+end
+
+function Core:StartTimerTracking()
+    local currentMoney = GetMoney and GetMoney() or 0
+    local currentXP = UnitXP and UnitXP("player") or 0
+    local currentXPMax = UnitXPMax and UnitXPMax("player") or 0
+    local currentLevel = UnitLevel and UnitLevel("player") or 0
+
+    self.timerSession = {
+        running = true,
+        startedAt = GetTime(),
+        elapsed = 0,
+        startMoney = currentMoney,
+        moneyDelta = 0,
+        xpDelta = 0,
+        xpSupported = currentXPMax and currentXPMax > 0,
+        prevXP = currentXP,
+        prevXPMax = currentXPMax,
+        prevLevel = currentLevel,
+    }
+
+    if self.timerFrame then
+        self.timerFrame:RegisterEvent("PLAYER_MONEY")
+        self.timerFrame:RegisterEvent("PLAYER_XP_UPDATE")
+        self.timerFrame:RegisterEvent("PLAYER_LEVEL_UP")
+    end
+
+    self:RefreshTimerWindow()
+end
+
+function Core:StopTimerTracking()
+    local session = self.timerSession
+    if not session or not session.running then
+        self:RefreshTimerWindow()
+        return
+    end
+
+    self:UpdateTimerMoneyDelta()
+    self:UpdateTimerXPDelta()
+
+    session.elapsed = GetTime() - (session.startedAt or GetTime())
+    session.running = false
+
+    if self.timerFrame then
+        self.timerFrame:UnregisterEvent("PLAYER_MONEY")
+        self.timerFrame:UnregisterEvent("PLAYER_XP_UPDATE")
+        self.timerFrame:UnregisterEvent("PLAYER_LEVEL_UP")
+    end
+
+    self:RefreshTimerWindow()
+end
+
+function Core:ToggleTimerWindow()
+    if not self.timerFrame then
+        self:CreateTimerWindow()
+    end
+
+    if self.timerFrame:IsShown() then
+        self.timerFrame:Hide()
+    else
+        self.timerFrame:Show()
+        self:RefreshTimerWindow()
+    end
+end
+
+function Core:ResetLevelingTipTracking()
+    local currentXP = UnitXP and UnitXP("player") or 0
+    local currentXPMax = UnitXPMax and UnitXPMax("player") or 0
+    local currentLevel = UnitLevel and UnitLevel("player") or 0
+
+    self.levelingTipState = {
+        startedAt = GetTime(),
+        totalXP = 0,
+        prevXP = currentXP,
+        prevXPMax = currentXPMax,
+        prevLevel = currentLevel,
+        xpSupported = currentXPMax and currentXPMax > 0,
+    }
+end
+
+function Core:UpdateLevelingTipTracking()
+    local cfg = MIcfg()
+    if not cfg.levelingTipEnabled then return end
+
+    if not self.levelingTipState then
+        self:ResetLevelingTipTracking()
+    end
+
+    local state = self.levelingTipState
+    local currentXP = UnitXP and UnitXP("player") or 0
+    local currentXPMax = UnitXPMax and UnitXPMax("player") or 0
+    local currentLevel = UnitLevel and UnitLevel("player") or 0
+
+    if not currentXPMax or currentXPMax <= 0 then
+        state.xpSupported = false
+        state.prevXP = currentXP or 0
+        state.prevXPMax = currentXPMax or 0
+        state.prevLevel = currentLevel or 0
+        return
+    end
+
+    state.xpSupported = true
+
+    local prevXP = state.prevXP or currentXP
+    local prevXPMax = state.prevXPMax or currentXPMax
+    local prevLevel = state.prevLevel or currentLevel
+
+    if currentLevel > prevLevel then
+        state.totalXP = (state.totalXP or 0) + math.max(0, (prevXPMax or 0) - (prevXP or 0)) + currentXP
+    elseif currentXP >= prevXP then
+        state.totalXP = (state.totalXP or 0) + (currentXP - prevXP)
+    elseif currentXP < prevXP then
+        state.totalXP = (state.totalXP or 0) + currentXP
+    end
+
+    state.prevXP = currentXP
+    state.prevXPMax = currentXPMax
+    state.prevLevel = currentLevel
+end
+
+function Core:GetLevelingTipMetrics()
+    local state = self.levelingTipState
+    local currentXP = UnitXP and UnitXP("player") or 0
+    local currentXPMax = UnitXPMax and UnitXPMax("player") or 0
+    local currentLevel = UnitLevel and UnitLevel("player") or 0
+    local maxLevel = GetPlayerMaxLevelSafe()
+
+    if not state then
+        self:ResetLevelingTipTracking()
+        state = self.levelingTipState
+    end
+
+    if not currentXPMax or currentXPMax <= 0 or currentLevel >= maxLevel then
+        return {
+            supported = false,
+            currentLevel = currentLevel,
+            maxLevel = maxLevel,
+        }
+    end
+
+    local elapsed = math.max(0, GetTime() - (state.startedAt or GetTime()))
+    local xpPerMinute = 0
+    if elapsed > 0 and (state.totalXP or 0) > 0 then
+        xpPerMinute = (state.totalXP / elapsed) * 60
+    end
+
+    local remainingXP = math.max(0, currentXPMax - currentXP)
+    local secondsPerXP = xpPerMinute > 0 and (60 / xpPerMinute) or nil
+    local levelETA = secondsPerXP and (remainingXP * secondsPerXP) or nil
+
+    local levelsRemaining = math.max(0, maxLevel - currentLevel)
+    local approxMaxRemainingXP = remainingXP
+    if levelsRemaining > 1 then
+        approxMaxRemainingXP = approxMaxRemainingXP + (levelsRemaining - 1) * currentXPMax
+    end
+    local maxETA = secondsPerXP and (approxMaxRemainingXP * secondsPerXP) or nil
+
+    return {
+        supported = true,
+        currentLevel = currentLevel,
+        maxLevel = maxLevel,
+        xpPerMinute = xpPerMinute,
+        remainingXP = remainingXP,
+        levelETA = levelETA,
+        maxETA = maxETA,
+    }
+end
+
+function Core:RefreshLevelingTipFrame()
+    local frame = self.levelingTipFrame
+    if not frame then return end
+
+    local cfg = MIcfg()
+    local fontPath = LibSharedMedia:Fetch("font", cfg.levelingTipFont) or STANDARD_TEXT_FONT
+    local fontSize = cfg.levelingTipFontSize or 13
+    local metrics = self:GetLevelingTipMetrics()
+    local labels = {
+        xpPerMinute = frame.xpPerMinuteLine,
+        remainingXP = frame.remainingXPLine,
+        levelETA = frame.levelETALine,
+        maxETA = frame.maxETALine,
+    }
+    local order = {
+        { key = "xpPerMinute", enabled = cfg.levelingTipShowXPPerMinute, text = "每分钟经验：统计中..." },
+        { key = "remainingXP", enabled = cfg.levelingTipShowRemainingXP, text = "距离升级：统计中..." },
+        { key = "levelETA", enabled = cfg.levelingTipShowLevelETA, text = "预计升级：统计中..." },
+        { key = "maxETA", enabled = cfg.levelingTipShowMaxETA, text = "预计满级：统计中..." },
+    }
+
+    if not metrics.supported then
+        if metrics.currentLevel and metrics.maxLevel and metrics.currentLevel >= metrics.maxLevel then
+            order[1].text = "每分钟经验：已满级"
+            order[2].text = "距离升级：已满级"
+            order[3].text = "预计升级：已满级"
+            order[4].text = "预计满级：已达成"
+        else
+            order[1].text = "每分钟经验：当前不可用"
+            order[2].text = "距离升级：当前不可用"
+            order[3].text = "预计升级：当前不可用"
+            order[4].text = "预计满级：当前不可用"
+        end
+    else
+        order[1].text = string.format("每分钟经验：%d", math.floor((metrics.xpPerMinute or 0) + 0.5))
+        order[2].text = string.format("距离升级：%d", metrics.remainingXP or 0)
+        order[3].text = metrics.levelETA and ("预计升级还需：" .. FormatElapsedTime(metrics.levelETA)) or "预计升级：统计中..."
+        order[4].text = metrics.maxETA and ("预计满级还需：" .. FormatElapsedTime(metrics.maxETA)) or "预计满级：统计中..."
+    end
+
+    local visibleLines = {}
+    local yOffset = -8
+    local maxWidth = 0
+    local totalHeight = 0
+
+    for _, item in ipairs(order) do
+        local line = labels[item.key]
+        line:SetFont(fontPath, fontSize, "OUTLINE")
+        if item.enabled then
+            line:SetText(item.text)
+            line:Show()
+            line:ClearAllPoints()
+            line:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, yOffset)
+            yOffset = yOffset - math.ceil(line:GetStringHeight() + 6)
+            totalHeight = totalHeight + math.ceil(line:GetStringHeight() + 6)
+            maxWidth = math.max(maxWidth, math.ceil(line:GetStringWidth()))
+            table.insert(visibleLines, line)
+        else
+            line:Hide()
+        end
+    end
+
+    frame:SetSize(math.max(170, maxWidth + 24), math.max(32, totalHeight + 16))
+    frame:SetMovable(not cfg.levelingTipLocked)
+    if cfg.levelingTipLocked then
+        frame.bg:SetColorTexture(0, 0, 0, 0)
+    else
+        frame.bg:SetColorTexture(0, 0.6, 1, 0.12)
+    end
+end
+
+function Core:UpdateLevelingTipVisibility()
+    if not self.levelingTipFrame then return end
+    if MIcfg().levelingTipEnabled then
+        self.levelingTipFrame:Show()
+    else
+        self.levelingTipFrame:Hide()
+    end
+end
+
+function Core:SaveLevelingTipPosition()
+    if not self.levelingTipFrame then return end
+    local point, _, relativePoint, x, y = self.levelingTipFrame:GetPoint(1)
+    local pos = MIcfg().levelingTipPoint
+    pos.point = point or "CENTER"
+    pos.relativePoint = relativePoint or "CENTER"
+    pos.x = math.floor((x or 0) + 0.5)
+    pos.y = math.floor((y or 0) + 0.5)
+end
+
 -- ═══════════════════════════════════════════════════
 --  耐久度闪烁动画
 -- ═══════════════════════════════════════════════════
@@ -1180,6 +1579,16 @@ function Core:ApplyMiscSettings()
         self:UpdateQuestToolsVisibility()
     end
 
+    if self.levelingTipFrame then
+        if cfg.levelingTipEnabled and not self.levelingTipState then
+            self:ResetLevelingTipTracking()
+        end
+        self.levelingTipFrame:SetMovable(not cfg.levelingTipLocked)
+        self.levelingTipFrame:EnableMouse(true)
+        self:RefreshLevelingTipFrame()
+        self:UpdateLevelingTipVisibility()
+    end
+
     self:UpdateDelveQuickLeaveButton()
     self:UpdateDelveQuickLeaveVisibility()
     self:UpdateMiscEventRegistration()
@@ -1335,6 +1744,7 @@ function Core:CreateMiscBar()
 
     self.miscFrame = frame
     self:CreateQuestToolsFrame()
+    self:CreateLevelingTipFrame()
     self:CreateDelveQuickLeaveButton()
 
     -- ── 事件帧 ──
@@ -1351,7 +1761,23 @@ function Core:CreateMiscBar()
             or event == "UPDATE_INVENTORY_DURABILITY"
             or event == "PLAYER_EQUIPMENT_CHANGED" then
             Core:UpdateMiscBarLayout()
+            Core:RefreshLevelingTipFrame()
             Core:UpdateDelveQuickLeaveVisibility()
+            return
+        end
+
+        if event == "PLAYER_XP_UPDATE" then
+            local unit = ...
+            if unit == "player" then
+                Core:UpdateLevelingTipTracking()
+                Core:RefreshLevelingTipFrame()
+            end
+            return
+        end
+
+        if event == "PLAYER_LEVEL_UP" then
+            Core:UpdateLevelingTipTracking()
+            Core:RefreshLevelingTipFrame()
             return
         end
 
@@ -1468,6 +1894,135 @@ function Core:CreateQuestToolsFrame()
     self.questToolsFrame = frame
     self:UpdateQuestToolsLayout()
     self:UpdateQuestToolsVisibility()
+end
+
+function Core:CreateTimerWindow()
+    if self.timerFrame then return end
+
+    local frame = CreateFrame("Frame", addonName .. "TimerWindow", UIParent, "BasicFrameTemplateWithInset")
+    frame:SetSize(280, 190)
+    frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    frame:SetMovable(true)
+    frame:SetClampedToScreen(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:Hide()
+
+    frame:SetScript("OnDragStart", function(self)
+        self:StartMoving()
+    end)
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+    end)
+
+    frame:SetScript("OnEvent", function(_, event, ...)
+        Core:HandleTimerTrackingEvent(event, ...)
+    end)
+
+    frame:SetScript("OnUpdate", function(_, _)
+        local session = Core.timerSession
+        if session and session.running then
+            Core:RefreshTimerWindow()
+        end
+    end)
+
+    if frame.TitleText then
+        frame.TitleText:SetText("收益计时")
+    end
+
+    local function CreateLabelRow(parent, label, yOffset)
+        local rowLabel = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        rowLabel:SetPoint("TOPLEFT", parent, "TOPLEFT", 16, yOffset)
+        rowLabel:SetText(label)
+
+        local rowValue = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        rowValue:SetPoint("LEFT", rowLabel, "RIGHT", 12, 0)
+        rowValue:SetJustifyH("LEFT")
+        rowValue:SetText("")
+
+        return rowValue
+    end
+
+    frame.statusValue = CreateLabelRow(frame, "状态：", -38)
+    frame.elapsedValue = CreateLabelRow(frame, "时长：", -64)
+    frame.moneyValue = CreateLabelRow(frame, "金币变化：", -90)
+    frame.xpValue = CreateLabelRow(frame, "经验变化：", -116)
+
+    frame.startButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    frame.startButton:SetSize(100, 24)
+    frame.startButton:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 22, 18)
+    frame.startButton:SetText("开始")
+    frame.startButton:SetScript("OnClick", function()
+        Core:StartTimerTracking()
+    end)
+
+    frame.stopButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    frame.stopButton:SetSize(100, 24)
+    frame.stopButton:SetPoint("LEFT", frame.startButton, "RIGHT", 20, 0)
+    frame.stopButton:SetText("停止")
+    frame.stopButton:SetScript("OnClick", function()
+        Core:StopTimerTracking()
+    end)
+
+    self.timerFrame = frame
+    self:RefreshTimerWindow()
+end
+
+function Core:CreateLevelingTipFrame()
+    if self.levelingTipFrame then return end
+
+    local cfg = MIcfg()
+    local frame = CreateFrame("Frame", addonName .. "LevelingTipFrame", UIParent)
+    frame:SetFrameStrata("LOW")
+    frame:SetClampedToScreen(true)
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+
+    frame.bg = frame:CreateTexture(nil, "BACKGROUND")
+    frame.bg:SetAllPoints(frame)
+
+    local pos = cfg.levelingTipPoint
+    frame:SetPoint(pos.point or "CENTER", UIParent, pos.relativePoint or "CENTER", pos.x or 0, pos.y or -70)
+
+    frame:SetScript("OnDragStart", function(self)
+        if MIcfg().levelingTipLocked then return end
+        self:StartMoving()
+    end)
+
+    frame:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        Core:SaveLevelingTipPosition()
+    end)
+
+    local function CreateLine(parent)
+        local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        fs:SetJustifyH("LEFT")
+        fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -8)
+        return fs
+    end
+
+    frame.xpPerMinuteLine = CreateLine(frame)
+    frame.remainingXPLine = CreateLine(frame)
+    frame.levelETALine = CreateLine(frame)
+    frame.maxETALine = CreateLine(frame)
+
+    frame:SetScript("OnUpdate", function(_, elapsed)
+        frame._tick = (frame._tick or 0) + elapsed
+        if frame._tick >= 1 then
+            frame._tick = 0
+            if MIcfg().levelingTipEnabled then
+                Core:RefreshLevelingTipFrame()
+            end
+        end
+    end)
+
+    self.levelingTipFrame = frame
+    if cfg.levelingTipEnabled then
+        self:ResetLevelingTipTracking()
+    end
+    self:RefreshLevelingTipFrame()
+    self:UpdateLevelingTipVisibility()
 end
 
 function Core:CreateDelveQuickLeaveButton()

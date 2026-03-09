@@ -22,6 +22,7 @@ Options\QuickChat.lua
 Options\Misc.lua
 Options\Attribute.lua
 Options\Currency.lua
+Options\LevelingTip.lua
 Options\CastBar.lua
 Options\MapGuide.lua
 Options\Main.lua
