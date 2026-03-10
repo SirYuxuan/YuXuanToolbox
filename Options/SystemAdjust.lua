@@ -9,7 +9,7 @@ function ns.BuildSystemAdjustOptions()
     return {
         type = "group",
         name = "系统调节",
-        order = 85,
+        order = 10,
         args = {
             overview = {
                 type = "description",

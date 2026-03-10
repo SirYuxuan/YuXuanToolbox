@@ -9,7 +9,7 @@ function ns.BuildQuestToolsOptions()
     return {
         type = "group",
         name = "任务助手",
-        order = 80,
+        order = 50,
         args = {
             questToolsEnabled = {
                 type = "toggle",

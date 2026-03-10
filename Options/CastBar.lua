@@ -9,7 +9,7 @@ local function BuildCastBarUnitArgs(key, label, order)
     return {
         type = "group",
         name = label,
-        order = order,
+        order = 20,
         args = {
             enabled = {
                 type = "toggle",

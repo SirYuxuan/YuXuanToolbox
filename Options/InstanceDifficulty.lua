@@ -8,7 +8,7 @@ function ns.BuildInstanceDifficultyOptions()
     return {
         type = "group",
         name = "副本难度助手",
-        order = 86,
+        order = 10,
         args = {
             enabled = {
                 type = "toggle",

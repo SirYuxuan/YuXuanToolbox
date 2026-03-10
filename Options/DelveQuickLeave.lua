@@ -21,7 +21,7 @@ function ns.BuildDelveQuickLeaveOptions()
     return {
         type = "group",
         name = "地下堡快速离开",
-        order = 82,
+        order = 50,
         args = {
             delveQuickLeaveEnabled = {
                 type = "toggle",

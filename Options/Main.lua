@@ -12,7 +12,7 @@ local function BuildAboutOptions()
     return {
         type = "group",
         name = "关于",
-        order = 100,
+        order = 999,
         args = {
             header = {
                 type = "header",
@@ -48,104 +48,140 @@ local function BuildAboutOptions()
             },
             feature2 = {
                 type = "description",
-                name = "|cFF33FF99●|r |cFFFFFFFF属性面板|r - 显示角色关键属性的浮动面板",
+                name = "|cFF33FF99●|r |cFFFFFFFF任务助手|r - 任务通报与自动交接浮动按钮",
                 order = 12,
                 fontSize = "medium",
             },
             feature3 = {
                 type = "description",
-                name = "|cFF33FF99●|r |cFFFFFFFF施法条|r - 可自定义样式的玩家和目标施法条",
+                name = "|cFF33FF99●|r |cFFFFFFFF团队标记|r - 快捷团队标记条、就位与倒计时",
                 order = 13,
                 fontSize = "medium",
             },
             feature4 = {
                 type = "description",
-                name = "|cFF33FF99●|r |cFFFFFFFF地图标记|r - 在地图上显示NPC和功能点位置，支持自定义坐标",
+                name = "|cFF33FF99●|r |cFFFFFFFF施法条|r - 可自定义样式的玩家和目标施法条",
                 order = 14,
                 fontSize = "medium",
             },
             feature5 = {
                 type = "description",
-                name = "|cFF33FF99●|r |cFFFFFFFF货币展示|r - 按游戏分组选择货币、自定义排列方向与展示样式",
+                name = "|cFF33FF99●|r |cFFFFFFFF距离监控|r - 实时显示与目标的距离",
                 order = 15,
                 fontSize = "medium",
             },
             feature6 = {
                 type = "description",
-                name = "|cFF33FF99●|r |cFFFFFFFF收益计时器|r - 使用 /timer 打开窗口，统计一段时间内的金币和经验变化",
+                name = "|cFF33FF99●|r |cFFFFFFFF属性面板|r - 显示角色关键属性的浮动面板",
                 order = 16,
                 fontSize = "medium",
             },
             feature7 = {
                 type = "description",
-                name = "|cFF33FF99●|r |cFFFFFFFF副本难度助手|r - 快速切换副本难度、重置副本、传进/出副本与一键退出",
+                name = "|cFF33FF99●|r |cFFFFFFFF货币展示|r - 按游戏分组选择货币、自定义排列方向与展示样式",
                 order = 17,
                 fontSize = "medium",
             },
-            spacer3 = { type = "description", name = " ", order = 20, width = "full" },
+            feature8 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF专精/天赋信息条|r - 显示当前专精、天赋方案与耐久度",
+                order = 18,
+                fontSize = "medium",
+            },
+            feature9 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF升级提示|r - 动态显示升级效率与预计升级时间",
+                order = 19,
+                fontSize = "medium",
+            },
+            feature10 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF副本难度助手|r - 快速切换难度、重置副本、传进/出与一键退出",
+                order = 20,
+                fontSize = "medium",
+            },
+            feature11 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF地下堡快速离开|r - 地下堡内一键离开的浮动图标",
+                order = 21,
+                fontSize = "medium",
+            },
+            feature12 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF收益计时器|r - 统计一段时间内的金币和经验变化",
+                order = 22,
+                fontSize = "medium",
+            },
+            feature13 = {
+                type = "description",
+                name = "|cFF33FF99●|r |cFFFFFFFF地图标记|r - 在地图上显示NPC和功能点位置，支持自定义坐标",
+                order = 23,
+                fontSize = "medium",
+            },
+            spacer3 = { type = "description", name = " ", order = 30, width = "full" },
             headerCommands = {
                 type = "header",
                 name = "常用命令",
-                order = 30,
+                order = 40,
             },
             cmd1 = {
                 type = "description",
                 name = "|cFFFFFF00/yx|r - 打开设置窗口",
-                order = 31,
+                order = 41,
                 fontSize = "medium",
             },
             cmd2 = {
                 type = "description",
                 name = "|cFFFFFF00/yx lock|r - 锁定施法条",
-                order = 32,
+                order = 42,
                 fontSize = "medium",
             },
             cmd3 = {
                 type = "description",
                 name = "|cFFFFFF00/yx unlock|r - 解锁施法条（可拖动）",
-                order = 33,
+                order = 43,
                 fontSize = "medium",
             },
             cmd4 = {
                 type = "description",
                 name = "|cFFFFFF00/yxpin|r - 快速添加当前位置到地图标记",
-                order = 34,
+                order = 44,
                 fontSize = "medium",
             },
             cmd5 = {
                 type = "description",
                 name = "|cFFFFFF00/timer|r - 打开收益计时器窗口",
-                order = 35,
+                order = 45,
                 fontSize = "medium",
             },
             cmd6 = {
                 type = "description",
                 name = "|cFFFFFF00/c|r 或 |cFFFFFF00/yx diff|r - 显示/隐藏副本难度助手",
-                order = 36,
+                order = 46,
                 fontSize = "medium",
             },
-            spacer4 = { type = "description", name = " ", order = 40, width = "full" },
+            spacer4 = { type = "description", name = " ", order = 50, width = "full" },
             headerTips = {
                 type = "header",
                 name = "使用提示",
-                order = 50,
+                order = 60,
             },
             tip1 = {
                 type = "description",
                 name = "|cFFCCCCCC• 拖动窗口：按住标题栏任意位置拖动|r",
-                order = 51,
+                order = 61,
                 fontSize = "medium",
             },
             tip2 = {
                 type = "description",
                 name = "|cFFCCCCCC• 配置档：可以创建多个配置档，在不同角色间切换|r",
-                order = 52,
+                order = 62,
                 fontSize = "medium",
             },
             tip3 = {
                 type = "description",
                 name = "|cFFCCCCCC• 地图标记：左键点击地图上的标记可设置导航点|r",
-                order = 53,
+                order = 63,
                 fontSize = "medium",
             },
         },
@@ -154,6 +190,14 @@ end
 
 --------------------------------------------------------------------------------
 -- 主选项构建
+-- 分组结构：
+--   战斗辅助  (order=10)：快捷频道、施法条、距离监控、团队标记、任务助手
+--   界面显示  (order=20)：专精信息条、属性面板、货币展示、升级提示、地下堡离开
+--   副本工具  (order=30)：副本难度助手
+--   地图探索  (order=40)：地图标记
+--   系统调节  (order=50)：系统调节
+--   配置档    (order=90)
+--   关于      (order=999)
 --------------------------------------------------------------------------------
 local function GetOptions()
     return {
@@ -161,25 +205,67 @@ local function GetOptions()
         type = "group",
         childGroups = "tree",
         args = {
-            quickChat = ns.BuildQuickChatOptions(),
-            distanceMonitor = ns.BuildDistanceMonitorOptions(),
-            questTools = ns.BuildQuestToolsOptions(),
-            infoBar = ns.BuildInfoBarOptions(),
-            delveQuickLeave = ns.BuildDelveQuickLeaveOptions(),
-            raidMarkers = ns.BuildRaidMarkersOptions(),
-            systemAdjust = ns.BuildSystemAdjustOptions(),
-            instanceDifficulty = ns.BuildInstanceDifficultyOptions(),
-            attribute = ns.BuildAttributeOptions(),
-            currency = ns.BuildCurrencyOptions(),
-            levelingTip = ns.BuildLevelingTipOptions(),
-            castBar = ns.BuildCastBarOptions(),
-            mapGuide = ns.BuildMapGuideOptions(),
+            -- ── 战斗辅助 ──────────────────────────────
+            combat = {
+                type = "group",
+                name = "战斗辅助",
+                order = 10,
+                args = {
+                    quickChat      = ns.BuildQuickChatOptions(),
+                    castBar        = ns.BuildCastBarOptions(),
+                    distanceMonitor = ns.BuildDistanceMonitorOptions(),
+                    raidMarkers    = ns.BuildRaidMarkersOptions(),
+                    questTools     = ns.BuildQuestToolsOptions(),
+                },
+            },
+            -- ── 界面显示 ──────────────────────────────
+            interface = {
+                type = "group",
+                name = "界面显示",
+                order = 20,
+                args = {
+                    infoBar        = ns.BuildInfoBarOptions(),
+                    attribute      = ns.BuildAttributeOptions(),
+                    currency       = ns.BuildCurrencyOptions(),
+                    levelingTip    = ns.BuildLevelingTipOptions(),
+                    delveQuickLeave = ns.BuildDelveQuickLeaveOptions(),
+                },
+            },
+            -- ── 副本工具 ──────────────────────────────
+            instance = {
+                type = "group",
+                name = "副本工具",
+                order = 30,
+                args = {
+                    instanceDifficulty = ns.BuildInstanceDifficultyOptions(),
+                },
+            },
+            -- ── 地图探索 ──────────────────────────────
+            exploration = {
+                type = "group",
+                name = "地图探索",
+                order = 40,
+                args = {
+                    mapGuide = ns.BuildMapGuideOptions(),
+                },
+            },
+            -- ── 系统调节 ──────────────────────────────
+            system = {
+                type = "group",
+                name = "系统调节",
+                order = 50,
+                args = {
+                    systemAdjust = ns.BuildSystemAdjustOptions(),
+                },
+            },
+            -- ── 配置档 ────────────────────────────────
             profiles = {
                 type = "group",
                 name = "配置档",
                 order = 90,
                 args = {},
             },
+            -- ── 关于 ──────────────────────────────────
             about = BuildAboutOptions(),
         },
     }
@@ -207,10 +293,9 @@ local function EnhanceDialogDrag()
         status.left = aceFrame:GetLeft()
     end
 
-    -- 直接创建固定高度的顶部拖动区，避免每次打开时遍历区域造成额外开销
     local dragRegion = CreateFrame("Frame", nil, aceFrame)
     dragRegion:SetPoint("TOPLEFT", aceFrame, "TOPLEFT", 0, 0)
-    dragRegion:SetPoint("TOPRIGHT", aceFrame, "TOPRIGHT", -26, 0) -- 避开关闭按钮
+    dragRegion:SetPoint("TOPRIGHT", aceFrame, "TOPRIGHT", -26, 0)
     dragRegion:SetHeight(28)
     dragRegion:EnableMouse(true)
     dragRegion:RegisterForDrag("LeftButton")
@@ -235,7 +320,6 @@ function ns.RegisterOptions(db)
     AceConfig:RegisterOptionsTable(addonName, options)
     AceConfigDialog:SetDefaultSize(addonName, 820, 620)
 
-    -- Hook Open函数以增强拖动区域
     if not AceConfigDialog._openHooked then
         hooksecurefunc(AceConfigDialog, "Open", function(_, name)
             if name == addonName then

@@ -8,7 +8,7 @@ function ns.BuildRaidMarkersOptions()
     return {
         type = "group",
         name = "团队标记",
-        order = 83,
+        order = 40,
         args = {
             raidMarkersEnabled = {
                 type = "toggle",

@@ -9,7 +9,7 @@ function ns.BuildLevelingTipOptions()
     return {
         type = "group",
         name = "升级提示",
-        order = 27,
+        order = 40,
         args = {
             enabled = {
                 type = "toggle",

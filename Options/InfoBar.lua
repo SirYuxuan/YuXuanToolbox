@@ -9,7 +9,7 @@ function ns.BuildInfoBarOptions()
     return {
         type = "group",
         name = "专精/天赋信息条",
-        order = 81,
+        order = 10,
         args = {
             infoBarEnabled = {
                 type = "toggle",

@@ -9,7 +9,7 @@ function ns.BuildDistanceMonitorOptions()
     return {
         type = "group",
         name = "距离监控",
-        order = 18,
+        order = 30,
         args = {
             enabled = {
                 type = "toggle",
