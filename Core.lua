@@ -796,7 +796,7 @@ end
 
 function Core:PrintWelcome()
     print("|cFF33FF99雨轩工具箱|r：|cFFFFD700欢迎使用|r |cFF00FFFFv" ..
-        self.VERSION .. "|r |cFFAAAAAA输入|r |cFFFFFF00/yx|r |cFFAAAAAA打开设置窗口|r")
+        self.VERSION .. "|r |cFFAAAAAA输入|r |cFFFFFF00/yx|r |cFFAAAAAA打开设置窗口  问题反馈QQ群：|r |cFF00FFFF1087904677|r")
 end
 
 -- ─── Initialization ────────────────────────────────

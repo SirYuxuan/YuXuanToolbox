@@ -201,7 +201,7 @@ end
 --------------------------------------------------------------------------------
 local function GetOptions()
     return {
-        name = "|cFF33FF99雨轩工具箱|r  v" .. Core.VERSION,
+        name = "|cFF33FF99雨轩工具箱|r  v" .. Core.VERSION .. "  |cFFAAAAAA问题反馈QQ群：|r |cFF00FFFF1087904677|r",
         type = "group",
         childGroups = "tree",
         args = {
