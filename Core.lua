@@ -18,6 +18,10 @@ pcall(function()
         "Interface\\AddOns\\" .. addonName .. "\\Resource\\Texture\\Gradient-Circle")
     LibSharedMedia:Register("statusbar", "Gradient-Line",
         "Interface\\AddOns\\" .. addonName .. "\\Resource\\Texture\\Gradient-Line")
+    LibSharedMedia:Register("statusbar", "WY052",
+        "Interface\\AddOns\\" .. addonName .. "\\Resource\\Texture\\WY052")
+    LibSharedMedia:Register("statusbar", "WY051",
+        "Interface\\AddOns\\" .. addonName .. "\\Resource\\Texture\\WY051")
 end)
 
 -- ─── Dragon Riding Spell IDs (for speed detection) ─
