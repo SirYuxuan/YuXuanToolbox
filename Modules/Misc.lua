@@ -1934,6 +1934,8 @@ function Core:UpdateMiscEventRegistration()
 
     self.miscEventFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 
+    self.miscEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+
 
 
     if cfg.levelingTipEnabled then
@@ -3960,7 +3962,18 @@ function Core:UpdateRaidMarkersVisibility()
     if not self.raidMarkersFrame then return end
 
     local cfg = MIcfg()
-    if cfg.raidMarkersEnabled and (IsInGroup() or cfg.raidMarkersShowWhenSolo) then
+    local shouldShow = cfg.raidMarkersEnabled and (IsInGroup() or cfg.raidMarkersShowWhenSolo)
+
+    -- This frame owns secure action buttons, so visibility changes must wait until combat ends.
+    if InCombatLockdown and InCombatLockdown() then
+        self.pendingRaidMarkersVisibility = shouldShow
+
+        return
+    end
+
+    self.pendingRaidMarkersVisibility = nil
+
+    if shouldShow then
         self.raidMarkersFrame:Show()
     else
         self.raidMarkersFrame:Hide()
@@ -4350,6 +4363,14 @@ function Core:CreateMiscBar()
     self.miscEventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "GROUP_ROSTER_UPDATE" then
             Core:UpdateRaidMarkersVisibility()
+
+            return
+        end
+
+        if event == "PLAYER_REGEN_ENABLED" then
+            if Core.pendingRaidMarkersVisibility ~= nil then
+                Core:UpdateRaidMarkersVisibility()
+            end
 
             return
         end
