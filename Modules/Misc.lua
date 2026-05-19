@@ -979,28 +979,43 @@ local function DecodeNPCSpawnInfo(guid)
     }
 end
 
+local function GetTooltipUnitGUID(tooltip, tooltipData)
+    if type(tooltipData) == "table" and type(tooltipData.guid) == "string" then
+        return tooltipData.guid
+    end
+
+    if tooltip and type(tooltip.GetTooltipData) == "function" then
+        local data = tooltip:GetTooltipData()
+
+        if type(data) == "table" and type(data.guid) == "string" then
+            return data.guid
+        end
+    end
+
+    if not tooltip or type(tooltip.GetUnit) ~= "function" then
+        return nil
+    end
+
+    local _, unit = tooltip:GetUnit()
+
+    if type(unit) ~= "string" or unit == "" then
+        return nil
+    end
+
+    return UnitGUID(unit)
+end
 
 
-function Core:AppendNPCAliveTimeToTooltip(tooltip)
+function Core:AppendNPCAliveTimeToTooltip(tooltip, tooltipData)
     local cfg = self.db and self.db.profile and self.db.profile.systemAdjust
 
     if not cfg or not cfg.showNPCAliveTime then return end
 
-    if not tooltip or type(tooltip.GetUnit) ~= "function" then return end
+    if not tooltip then return end
 
     if cfg.npcTimeUseModifier and not IsModifierKeyDown() then return end
 
-
-
-    local _, unit = tooltip:GetUnit()
-
-    if not unit or not UnitExists(unit) or UnitIsPlayer(unit) or UnitIsDead(unit) then
-        return
-    end
-
-
-
-    local guid = UnitGUID(unit)
+    local guid = GetTooltipUnitGUID(tooltip, tooltipData)
 
     local info = DecodeNPCSpawnInfo(guid)
 
@@ -1053,8 +1068,8 @@ function Core:ApplyNPCTooltipHook()
 
 
 
-    local function HookTooltipUnit(tooltip)
-        Core:AppendNPCAliveTimeToTooltip(tooltip)
+    local function HookTooltipUnit(tooltip, tooltipData)
+        Core:AppendNPCAliveTimeToTooltip(tooltip, tooltipData)
     end
 
 
