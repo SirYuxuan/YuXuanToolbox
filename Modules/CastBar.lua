@@ -85,6 +85,25 @@ local function TrySetValue(sb, v)
     pcall(function() sb:SetValue(v) end)
 end
 
+local function TrySetTimerDuration(sb, duration, direction)
+    if not sb or not sb.SetTimerDuration or not duration then return false end
+    local ok = pcall(function()
+        sb:SetTimerDuration(duration, Enum.StatusBarInterpolation.Immediate, direction)
+    end)
+    return ok
+end
+
+local function ReadSafeNumber(value)
+    if value == nil then return nil end
+    local ok, numberValue = pcall(function()
+        return value + 0
+    end)
+    if ok and type(numberValue) == "number" then
+        return numberValue
+    end
+    return nil
+end
+
 -- ─── Texture/Font resolution ───────────────────────
 
 local function ResolveLSM(mediatype, key)
@@ -336,6 +355,32 @@ end
 
 -- ─── Cast reading ──────────────────────────────────
 
+local function ReadCastDuration(kind, unit)
+    local reader = kind == "channel" and UnitChannelDuration or UnitCastingDuration
+    if type(reader) ~= "function" then return nil end
+    local ok, duration = pcall(reader, unit)
+    if ok then return duration end
+    return nil
+end
+
+local function ReadDurationTotal(duration)
+    if not duration or type(duration.GetTotalDuration) ~= "function" then return nil end
+    local ok, total = pcall(duration.GetTotalDuration, duration)
+    if ok then return ReadSafeNumber(total) end
+    return nil
+end
+
+local function ReadCastSeconds(startMS, endMS)
+    if not startMS or not endMS then return nil, nil end
+    local ok, startSec, endSec = pcall(function()
+        return startMS / 1000, endMS / 1000
+    end)
+    if ok and type(startSec) == "number" and type(endSec) == "number" then
+        return startSec, endSec
+    end
+    return nil, nil
+end
+
 local function ReadUnitCast(unit)
     local name, _, texture, startMS, endMS = UnitCastingInfo(unit)
     local kind = "cast"
@@ -343,12 +388,13 @@ local function ReadUnitCast(unit)
         name, _, texture, startMS, endMS = UnitChannelInfo(unit)
         if name then kind = "channel" end
     end
-    if not name or not startMS or not endMS then return nil end
-    local ok, startSec, endSec = pcall(function()
-        return startMS / 1000, endMS / 1000
-    end)
-    if not ok then return nil end
-    return kind, name, texture, startSec, endSec
+    if not name then return nil end
+
+    local duration = ReadCastDuration(kind, unit)
+    local startSec, endSec = ReadCastSeconds(startMS, endMS)
+    if not duration and (not startSec or not endSec) then return nil end
+
+    return kind, name, texture, startSec, endSec, duration
 end
 
 local function SetIcon(f, texture)
@@ -395,7 +441,7 @@ end
 
 local function StartOrRefreshFromUnit(f, unitHint)
     local unit = GetEffectiveUnit(f, unitHint)
-    local kind, name, texture, startSec, endSec = ReadUnitCast(unit)
+    local kind, name, texture, startSec, endSec, duration = ReadUnitCast(unit)
     if not kind then return false end
 
     if (f.key == "target" or f.key == "focus") and unit ~= BAR_UNITS[f.key] then
@@ -414,18 +460,26 @@ local function StartOrRefreshFromUnit(f, unitHint)
     st.texture = texture
     st.startSec = startSec
     st.endSec = endSec
+    st.durationObj = duration
 
     ApplyCastBarColor(f)
 
-    local dur = endSec - startSec
-    if dur <= 0 then dur = 1.5 end
+    local dur = ReadDurationTotal(duration)
+    if (not dur or dur <= 0) and startSec and endSec then
+        dur = endSec - startSec
+    end
+    if not dur or dur <= 0 then dur = 1.5 end
     st.durationSec = dur
 
-    TrySetMinMax(f.bar, 0, dur)
-    if kind == "channel" then
-        TrySetValue(f.bar, dur)
-    else
-        TrySetValue(f.bar, 0)
+    local direction = kind == "channel" and Enum.StatusBarTimerDirection.RemainingTime
+        or Enum.StatusBarTimerDirection.ElapsedTime
+    if not TrySetTimerDuration(f.bar, duration, direction) then
+        TrySetMinMax(f.bar, 0, dur)
+        if kind == "channel" then
+            TrySetValue(f.bar, dur)
+        else
+            TrySetValue(f.bar, 0)
+        end
     end
 
     local bdb = BarDB(f.key)
@@ -501,24 +555,28 @@ FrameOnUpdate = function(f, elapsed)
         elapsedSec = now - st.startSec
     end
 
-    if not remaining or not elapsedSec then
+    if not st.durationObj and (not remaining or not elapsedSec) then
         StopIfReallyStopped(f, st.unit)
         return
     end
 
     local dur = st.durationSec or 1
-    remaining = math.max(0, math.min(remaining, dur))
-    elapsedSec = math.max(0, math.min(elapsedSec, dur))
+    if remaining and elapsedSec then
+        remaining = math.max(0, math.min(remaining, dur))
+        elapsedSec = math.max(0, math.min(elapsedSec, dur))
 
-    if st.kind == "channel" then
-        TrySetValue(f.bar, remaining)
-    else
-        TrySetValue(f.bar, elapsedSec)
+        if not st.durationObj then
+            if st.kind == "channel" then
+                TrySetValue(f.bar, remaining)
+            else
+                TrySetValue(f.bar, elapsedSec)
+            end
+        end
     end
 
     -- Latency safe zone (player only)
     local bdb = BarDB(f.key)
-    if f.key == "player" and f._latency and f._latency > 0 and dur > 0 then
+    if remaining and f.key == "player" and f._latency and f._latency > 0 and dur > 0 then
         if bdb.showLatency ~= false then
             local latency = math.min(f._latency, dur)
             local ratio = latency / dur
@@ -562,7 +620,7 @@ FrameOnUpdate = function(f, elapsed)
     f._textElapsed = (f._textElapsed or 0) + (elapsed or 0)
     if f._textElapsed >= TEXT_UPDATE_INTERVAL then
         f._textElapsed = 0
-        if bdb.showTime == true then
+        if bdb.showTime == true and remaining then
             local ok, s = pcall(string.format, "%.1f", remaining)
             if ok then TrySetText(f.timeText, s) else TrySetText(f.timeText, "") end
         else
